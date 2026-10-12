@@ -161,14 +161,17 @@ export default function RegionalReportView({ orders, onToast }: Props) {
           { header: 'Farmer / customer', width: 20 }, { header: 'Phone', width: 12 }, { header: 'Village, town, PIN', width: 26 },
           { header: 'Orders', width: 8 }, { header: 'Total spent', width: 12, money: true }, { header: 'Last order', width: 11 }, { header: 'Top product', width: 20 },
           { header: 'Land holding', width: 13 }, { header: 'Crops', width: 20 },
+          { header: 'Farming model', width: 18 }, { header: 'Water resource', width: 18 }, { header: 'Preferred language', width: 18 },
           { header: 'Cows', width: 7 }, { header: 'Buffaloes', width: 10 }, { header: 'Goats', width: 7 }, { header: 'Sheep', width: 7 }, { header: 'Poultry', width: 8 },
         ],
         rows: target.map(f => {
-          const lv = profiles[f.phone]?.livestock ?? { ...EMPTY_LIVESTOCK };
-          const land = profiles[f.phone]?.landHolding;
+          const p = profiles[f.phone];
+          const lv = p?.livestock ?? { ...EMPTY_LIVESTOCK };
+          const land = p?.landHolding;
           return [
             f.name, f.phone, f.place, f.orders, f.spent, shortDate(f.last), f.top,
-            land && land !== '—' ? land : '', (profiles[f.phone]?.crops ?? []).join(', '),
+            land && land !== '—' ? land : '', (p?.crops ?? []).join(', '),
+            p?.details?.farmingModel ?? '', p?.details?.waterResource ?? '', p?.details?.preferredLanguage ?? '',
             lv.cows, lv.buffaloes, lv.goats, lv.sheep, lv.poultry,
           ];
         }),
