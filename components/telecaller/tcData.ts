@@ -68,7 +68,7 @@ export interface TeamData {
 
 // A lead left unassigned this long, or assigned but not called this long, is surfaced
 // in the Follow-up section so nothing slips. Shared by the section and its nav badge.
-export const UNASSIGNED_STALE_DAYS = 7;
+export const UNASSIGNED_STALE_DAYS = 3;
 export const UNCALLED_STALE_DAYS = 3;
 
 /** Leads surfaced automatically in Follow-up: unassigned too long, or assigned but never called. */
