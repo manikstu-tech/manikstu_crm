@@ -6,10 +6,14 @@ interface ExportMenuProps {
   onExport: (format: ExportFormat) => Promise<void>;
   label?: string;
   small?: boolean;
+  /** Which formats to offer. Defaults to Excel + PDF. */
+  formats?: ExportFormat[];
 }
 
-/** "Export ▾" button with Excel and PDF options. */
-export default function ExportMenu({ onExport, label = 'Export', small = false }: ExportMenuProps) {
+const FORMAT_LABEL: Record<ExportFormat, string> = { excel: 'Excel (.xlsx)', csv: 'CSV (.csv)', pdf: 'PDF' };
+
+/** "Export ▾" button with a menu of file formats. */
+export default function ExportMenu({ onExport, label = 'Export', small = false, formats = ['excel', 'pdf'] }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,12 +50,11 @@ export default function ExportMenu({ onExport, label = 'Export', small = false }
       </button>
       {open && (
         <div className="export-options" role="menu">
-          <button role="menuitem" onClick={() => run('excel')}>
-            <FileSpreadsheet size={16} /> Excel (.xlsx)
-          </button>
-          <button role="menuitem" onClick={() => run('pdf')}>
-            <FileText size={16} /> PDF
-          </button>
+          {formats.map(f => (
+            <button key={f} role="menuitem" onClick={() => run(f)}>
+              {f === 'pdf' ? <FileText size={16} /> : <FileSpreadsheet size={16} />} {FORMAT_LABEL[f]}
+            </button>
+          ))}
         </div>
       )}
     </div>

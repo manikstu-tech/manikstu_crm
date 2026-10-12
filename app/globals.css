@@ -1428,7 +1428,21 @@ code { font-size: 11.5px; background: var(--line); border-radius: 4px; padding: 
 }
 .livestock-item .li-icon { font-size: 24px; }
 .livestock-item .li-num { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; margin-top: 6px; }
+.livestock-item .li-input {
+  width: 64px; margin: 6px auto 0; display: block; text-align: center;
+  font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; color: var(--ink);
+  background: var(--card-bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px;
+}
+.livestock-item .li-input:focus { outline: none; border-color: var(--leaf); box-shadow: 0 0 0 2px rgba(58, 112, 48, 0.18); }
 .livestock-item .li-label { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+
+/* Small square icon button (e.g. the farmer "view" eye in the Regional report table). */
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--card-bg); color: var(--ink-soft); cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
+.icon-btn:hover { border-color: var(--leaf); color: var(--leaf); }
+
+/* Editable Farm Profile fields (farmer details). Sits where the read-only value was. */
+.farm-input { width: 220px; max-width: 58%; text-align: right; font: inherit; font-size: 13.5px; color: var(--ink); background: var(--card-bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.farm-input:focus { outline: none; border-color: var(--leaf); box-shadow: 0 0 0 2px rgba(58, 112, 48, 0.18); }
 
 /* Report Links */
 .report-links { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }

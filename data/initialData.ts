@@ -45,6 +45,12 @@ export interface Customer {
     sheep: number;
     poultry: number;
   };
+  /** Free-text farm-profile fields the telecalling head can fill in from a call. */
+  details?: {
+    farmingModel?: string;
+    waterResource?: string;
+    preferredLanguage?: string;
+  };
 }
 
 export interface Product {

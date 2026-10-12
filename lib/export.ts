@@ -1,7 +1,7 @@
 // Excel (.xlsx) and PDF export. The libraries are loaded only when someone exports,
 // so they don't add to the page's initial load.
 
-export type ExportFormat = 'excel' | 'pdf';
+export type ExportFormat = 'excel' | 'pdf' | 'csv';
 
 export interface ExportColumn {
   header: string;
@@ -139,6 +139,20 @@ export async function exportPdf({ filename, title, subtitle, columns, rows }: Ex
   doc.save(`${filename}.pdf`);
 }
 
+/** Plain CSV (opens in Excel / Sheets / anything). A BOM keeps UTF-8 names correct in Excel. */
+export async function exportCsv({ filename, columns, rows }: ExportTable) {
+  const cell = (v: string | number | null) => {
+    const s = v === null || v === undefined ? '' : String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [columns.map(c => cell(c.header)).join(',')];
+  rows.forEach(r => lines.push(r.map(cell).join(',')));
+  const csv = '﻿' + lines.join('\r\n');
+  saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${filename}.csv`);
+}
+
 export function exportTable(format: ExportFormat, table: ExportTable) {
-  return format === 'excel' ? exportExcel(table) : exportPdf(table);
+  if (format === 'excel') return exportExcel(table);
+  if (format === 'csv') return exportCsv(table);
+  return exportPdf(table);
 }

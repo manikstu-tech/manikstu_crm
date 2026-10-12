@@ -1,11 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronRight, IndianRupee, MapPin, PackageCheck, Receipt, Users } from 'lucide-react';
+import { ChevronRight, Eye, IndianRupee, MapPin, PackageCheck, Receipt, Upload, Users } from 'lucide-react';
 import { TODAY, OrderSource, SalesOrder } from '../../data/managerDashboard';
+import { Customer } from '../../data/initialData';
 import { MONTH, daysBefore, pct, rupees, rupeesShort, shortDate } from '../../lib/format';
 import { ExportFormat, exportTable } from '../../lib/export';
+import { fetchFarmerProfile, fetchFarmerProfiles, saveFarmerProfile } from '../../lib/farmerProfile';
 import { INDIA_STATES, INDIA_UTS, districtFor, stateFor } from '../../lib/regions';
 import ExportMenu from '../ExportMenu';
+import FarmerDetailsView from './FarmerDetailsView';
+import FarmerProfileImport from './FarmerProfileImport';
 import PieChart, { PieSlice } from '../PieChart';
+
+const EMPTY_LIVESTOCK: Customer['livestock'] = { cows: 0, buffaloes: 0, goats: 0, sheep: 0, poultry: 0 };
 
 type Period = 'month' | '30d' | '90d' | 'all';
 const PERIOD_LABEL: Record<Period, string> = { month: 'This month', '30d': 'Last 30 days', '90d': 'Last 90 days', all: 'All time' };
@@ -37,6 +43,36 @@ export default function RegionalReportView({ orders, onToast }: Props) {
   const [source, setSource] = useState<OrderSource | 'all'>('all');
   const [page, setPage] = useState(0);
   const reset = () => setPage(0);
+
+  // Farmer details drawer: open the existing FarmerDetailsView inline for one farmer,
+  // pulling their saved profile (land, crops, livestock) by phone.
+  const [viewing, setViewing] = useState<Customer | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  // Download scope: every farmer in the current view, or one farmer (by phone).
+  const [downloadScope, setDownloadScope] = useState<'all' | string>('all');
+  // Load the saved profile first, so the details view mounts once with the real
+  // land/crops/livestock (its edit fields initialise from the data on mount).
+  const openFarmer = async (f: { name: string; phone: string; place: string; orders: number; spent: number; last: string }) => {
+    const orderFigures = { name: f.name, location: f.place, ordersCount: f.orders, lifetimeValue: f.spent, lastOrder: shortDate(f.last) };
+    const profile = await fetchFarmerProfile(f.phone);
+    setViewing(profile
+      ? { ...profile, ...orderFigures }
+      : { id: `F-${f.phone}`, phone: f.phone, status: 'Active', landHolding: '—', crops: [], livestock: { ...EMPTY_LIVESTOCK }, ...orderFigures });
+  };
+  const saveFarmer = async (patch: {
+    livestock?: Customer['livestock'];
+    landHolding?: string;
+    crops?: string[];
+    farmingModel?: string;
+    waterResource?: string;
+    preferredLanguage?: string;
+  }) => {
+    if (!viewing) return;
+    const saved = await saveFarmerProfile({ phone: viewing.phone, name: viewing.name, ...patch });
+    // Update the profile fields; keep this view's order figures (orders / spent / last order).
+    setViewing(v => (v ? { ...v, livestock: saved.livestock, landHolding: saved.landHolding, crops: saved.crops, details: saved.details } : v));
+    onToast('Farmer profile saved');
+  };
 
   // Everything except the location filters
   const base = located.filter(({ o, state: st }) =>
@@ -109,9 +145,56 @@ export default function RegionalReportView({ orders, onToast }: Props) {
     }
   };
 
+  // Download full farmer details (incl. land, crops and livestock pulled from the saved
+  // profiles) for all farmers in this view, or one chosen farmer. Excel / CSV / PDF.
+  const downloadFarmerDetails = async (format: ExportFormat) => {
+    const target = downloadScope === 'all' ? farmerRows : farmerRows.filter(f => f.phone === downloadScope);
+    if (target.length === 0) { onToast('No farmers to download'); return; }
+    try {
+      const profiles = await fetchFarmerProfiles(target.map(f => f.phone));
+      const scopeName = downloadScope === 'all' ? (district === 'all' ? stateLabel : district) : target[0].name;
+      await exportTable(format, {
+        filename: `farmer-details-${scopeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${TODAY}`,
+        title: `Farmer details · ${areaLabel}`,
+        subtitle: `${PERIOD_LABEL[period]} · ${downloadScope === 'all' ? `${target.length} farmers` : target[0].name} · exported ${shortDate(TODAY)}`,
+        columns: [
+          { header: 'Farmer / customer', width: 20 }, { header: 'Phone', width: 12 }, { header: 'Village, town, PIN', width: 26 },
+          { header: 'Orders', width: 8 }, { header: 'Total spent', width: 12, money: true }, { header: 'Last order', width: 11 }, { header: 'Top product', width: 20 },
+          { header: 'Land holding', width: 13 }, { header: 'Crops', width: 20 },
+          { header: 'Cows', width: 7 }, { header: 'Buffaloes', width: 10 }, { header: 'Goats', width: 7 }, { header: 'Sheep', width: 7 }, { header: 'Poultry', width: 8 },
+        ],
+        rows: target.map(f => {
+          const lv = profiles[f.phone]?.livestock ?? { ...EMPTY_LIVESTOCK };
+          const land = profiles[f.phone]?.landHolding;
+          return [
+            f.name, f.phone, f.place, f.orders, f.spent, shortDate(f.last), f.top,
+            land && land !== '—' ? land : '', (profiles[f.phone]?.crops ?? []).join(', '),
+            lv.cows, lv.buffaloes, lv.goats, lv.sheep, lv.poultry,
+          ];
+        }),
+      });
+      onToast(`Farmer details downloaded (${format === 'excel' ? 'Excel' : format === 'csv' ? 'CSV' : 'PDF'})`);
+    } catch {
+      onToast('Download failed. Please try again.');
+    }
+  };
+
   const pages = Math.max(1, Math.ceil(farmerRows.length / PAGE_SIZE));
   const safePage = Math.min(page, pages - 1);
   const pageRows = farmerRows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
+  if (viewing) {
+    return (
+      <FarmerDetailsView
+        customer={viewing}
+        orders={orders}
+        editable
+        onSave={saveFarmer}
+        backLabel="Back to regional report"
+        onBack={() => setViewing(null)}
+      />
+    );
+  }
 
   return (
     <>
@@ -217,6 +300,7 @@ export default function RegionalReportView({ orders, onToast }: Props) {
         <div className="page-toolbar" style={{ marginBottom: 12 }}>
           <div className="panel-meta">Farmer-wise · {farmerRows.length} farmers, {rows.length} orders</div>
           <div className="toolbar-actions">
+            <button className="btn-secondary btn-small" onClick={() => setImportOpen(true)}><Upload size={15} /> Import</button>
             <ExportMenu onExport={exportFarmers} />
           </div>
         </div>
@@ -224,10 +308,10 @@ export default function RegionalReportView({ orders, onToast }: Props) {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Farmer / customer</th><th>Village · town · PIN</th><th className="num-col">Orders</th><th className="num-col">Total spent</th><th>Last order</th><th>Top product</th></tr>
+              <tr><th>Farmer / customer</th><th>Village · town · PIN</th><th className="num-col">Orders</th><th className="num-col">Total spent</th><th>Last order</th><th>Top product</th><th className="num-col">View</th></tr>
             </thead>
             <tbody>
-              {farmerRows.length === 0 && <tr><td colSpan={6} className="loc" style={{ textAlign: 'center', padding: 24 }}>{(state === 'all' ? orders.length : stateCounts.get(state)) ? 'No farmers in this area for these filters.' : `No orders from ${stateLabel} yet.`}</td></tr>}
+              {farmerRows.length === 0 && <tr><td colSpan={7} className="loc" style={{ textAlign: 'center', padding: 24 }}>{(state === 'all' ? orders.length : stateCounts.get(state)) ? 'No farmers in this area for these filters.' : `No orders from ${stateLabel} yet.`}</td></tr>}
               {pageRows.map(f => (
                 <tr key={f.phone}>
                   <td className="cust">{f.name}<div className="loc">{f.phone}</div></td>
@@ -236,6 +320,11 @@ export default function RegionalReportView({ orders, onToast }: Props) {
                   <td className="num-col strong">{rupees(f.spent)}</td>
                   <td>{shortDate(f.last)}</td>
                   <td>{f.top}</td>
+                  <td className="num-col">
+                    <button className="icon-btn" title={`View ${f.name}'s details`} aria-label={`View ${f.name}'s details`} onClick={() => openFarmer(f)}>
+                      <Eye size={16} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -250,11 +339,23 @@ export default function RegionalReportView({ orders, onToast }: Props) {
             </div>
           )}
         </div>
+
+        <div className="page-toolbar" style={{ justifyContent: 'flex-end', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+          <div className="pill-select">
+            <select value={downloadScope} onChange={e => setDownloadScope(e.target.value)} aria-label="Farmers to download">
+              <option value="all">All farmers ({farmerRows.length})</option>
+              {farmerRows.map(f => <option key={f.phone} value={f.phone}>{f.name} · {f.phone}</option>)}
+            </select>
+          </div>
+          <ExportMenu label="Download farmer details" formats={['excel', 'csv', 'pdf']} onExport={downloadFarmerDetails} />
+        </div>
       </div>
 
       <div className="panel-note">
         Orders don&apos;t store a district yet: for Odisha it&apos;s worked out from the PIN code (or town name); for other states the town is shown. If an order has no state, it&apos;s taken from the PIN code. Cancelled orders are listed but not counted in revenue.
       </div>
+
+      <FarmerProfileImport isOpen={importOpen} onClose={() => setImportOpen(false)} onToast={onToast} />
     </>
   );
 }
