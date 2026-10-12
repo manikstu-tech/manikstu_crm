@@ -58,6 +58,10 @@ export interface Campaign {
   product: string;
   created_at: string;
   recipients: Recipient[];
+  /** Optional photo to send with the message (a data URL). Downloaded with the list so
+   * the head attaches it in the WhatsApp Business broadcast (wa.me links can't carry it). */
+  photo?: string;
+  photoName?: string;
   /** Sample history only: counts from before this dashboard tracked recipients. */
   sample?: { sent: number; replies: number; orders: number };
 }

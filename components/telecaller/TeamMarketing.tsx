@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCheck, Download, Megaphone, MessageCircle, Search, Send, Users, X } from 'lucide-react';
+import { CheckCheck, Download, ImagePlus, Megaphone, MessageCircle, Search, Send, Users, X } from 'lucide-react';
 import { SalesOrder, TODAY } from '../../data/managerDashboard';
 import { AUDIENCES, AudienceKey, Campaign, Recipient, TEMPLATES, fillTemplate, whatsappTo } from '../../data/marketing';
 import { daysBefore, nowStamp, shortDate } from '../../lib/format';
@@ -117,6 +117,19 @@ export default function TeamMarketing({ data, orders, campaigns, onCampaignsChan
   const [product, setProduct] = useState(products[0] ?? '');
   const [message, setMessage] = useState(TEMPLATES[0].text);
   const [name, setName] = useState('');
+  // Optional photo the head picks from their device. Sent with the message by attaching
+  // it in the WhatsApp Business broadcast (it downloads with the list).
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoName, setPhotoName] = useState('');
+  const pickPhoto = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { onToast('Please choose an image file (JPG or PNG)'); return; }
+    if (file.size > 5 * 1024 * 1024) { onToast('Image is too large — please pick one under 5 MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setPhoto(String(reader.result)); setPhotoName(file.name); };
+    reader.readAsDataURL(file);
+  };
+  const clearPhoto = () => { setPhoto(null); setPhotoName(''); };
   const pickTemplate = (key: string) => { setTemplateKey(key); setMessage(TEMPLATES.find(t => t.key === key)!.text); };
   const contacts = audiences[audience];
   const [contactQuery, setContactQuery] = useState('');
@@ -142,11 +155,12 @@ export default function TeamMarketing({ data, orders, campaigns, onCampaignsChan
     if (!message.trim()) { onToast('Write a message first'); return; }
     const id = Math.max(0, ...campaigns.map(c => c.id)) + 1;
     const recipients: Recipient[] = contacts.map(c => ({ name: c.name, phone: c.phone, text: fillTemplate(message, c.name, product), sent: false }));
-    onCampaignsChange([{ id, name: name.trim() || defaultName, audience, templateKey, product, created_at: nowStamp(), recipients }, ...campaigns]);
+    onCampaignsChange([{ id, name: name.trim() || defaultName, audience, templateKey, product, created_at: nowStamp(), recipients, photo: photo ?? undefined, photoName: photoName || undefined }, ...campaigns]);
     setOpenId(id);
     setQueuePage(0);
     setName('');
-    onToast(`Campaign ready: ${recipients.length} messages to send`);
+    clearPhoto();
+    onToast(`Campaign ready: ${recipients.length} messages to send${photo ? ' (photo included in the download)' : ''}`);
   };
 
   const markSent = (campaignId: number, phone: string) => {
@@ -155,14 +169,25 @@ export default function TeamMarketing({ data, orders, campaigns, onCampaignsChan
 
   const exportList = async (c: Campaign, format: ExportFormat) => {
     try {
+      const base = `whatsapp-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${TODAY}`;
       await exportTable(format, {
-        filename: `whatsapp-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${TODAY}`,
+        filename: base,
         title: `WhatsApp campaign · ${c.name}`,
         subtitle: `${c.recipients.length} contacts · ${AUDIENCES.find(a => a.key === c.audience)!.label}`,
         columns: [{ header: 'Name', width: 20 }, { header: 'Phone', width: 13 }, { header: 'Message', width: 60 }, { header: 'Sent', width: 7 }],
         rows: c.recipients.map(r => [r.name, r.phone, r.text, r.sent ? 'Yes' : 'No']),
       });
-      onToast('Contact list downloaded: import it into a WhatsApp Business broadcast list');
+      // Also download the photo, so the head attaches it in the broadcast (wa.me can't carry it).
+      if (c.photo) {
+        const ext = (c.photo.match(/^data:image\/(png|jpe?g|webp)/)?.[1] ?? 'jpg').replace('jpeg', 'jpg');
+        const a = document.createElement('a');
+        a.href = c.photo;
+        a.download = c.photoName || `${base}-photo.${ext}`;
+        a.click();
+      }
+      onToast(c.photo
+        ? 'List + photo downloaded: start a WhatsApp Business broadcast, add the list, and attach the photo'
+        : 'Contact list downloaded: import it into a WhatsApp Business broadcast list');
     } catch {
       onToast('Download failed. Please try again.');
     }
@@ -227,6 +252,34 @@ export default function TeamMarketing({ data, orders, campaigns, onCampaignsChan
             <textarea rows={4} value={message} onChange={e => setMessage(e.target.value)} />
           </label>
 
+          <div className="form-group mk-photo">
+            <span>Photo (optional) · pick one from your device; it downloads with the list to attach in the broadcast</span>
+            {photo ? (
+              <div className="mk-photo-chosen">
+                <img src={photo} alt="Campaign" className="mk-photo-thumb" />
+                <div className="mk-photo-meta">
+                  <div className="loc">{photoName || 'Selected image'}</div>
+                  <div className="mk-photo-actions">
+                    <label className="link-btn">
+                      Change
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+                    </label>
+                    <button type="button" className="link-btn" onClick={clearPhoto}>Remove</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <label className="mk-photo-drop">
+                <span className="mk-photo-drop-icon"><ImagePlus size={20} /></span>
+                <span className="mk-photo-drop-text">
+                  <strong>Choose a photo</strong>
+                  <small>JPG or PNG from your device · shown with the message</small>
+                </span>
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
+            )}
+          </div>
+
           <div className="mk-step mk-step-last"><span className="mk-step-n">2</span> Send</div>
           <div className="mk-send-row">
             <button className="btn-primary" onClick={createCampaign}><Send size={15} /> Prepare {contacts.length} messages</button>
@@ -241,6 +294,7 @@ export default function TeamMarketing({ data, orders, campaigns, onCampaignsChan
             <div className="mk-phone-top"><span className="avatar">M</span><div><strong>Manikstu</strong><div>online</div></div></div>
             <div className="mk-chat">
               <div className="mk-bubble">
+                {photo && <img src={photo} alt="Campaign" className="mk-bubble-photo" />}
                 {fillTemplate(message || ' ', previewName, product)}
                 <span className="mk-time">10:30 <CheckCheck size={13} /></span>
               </div>

@@ -2634,6 +2634,26 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
 .mk-message { margin-top: 12px; }
 .mk-message textarea { width: 100%; font: inherit; font-size: 13.5px; line-height: 1.5; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; resize: vertical; background: var(--card-bg); color: var(--ink); }
 .mk-message textarea:focus { outline: none; border-color: var(--leaf); }
+.mk-photo { margin-top: 12px; }
+.mk-photo > span { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--ink-soft); }
+/* Attractive upload card (empty state) */
+.mk-photo-drop { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1.5px dashed color-mix(in srgb, var(--leaf) 45%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--leaf) 7%, transparent); cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease; }
+.mk-photo-drop:hover { border-color: var(--leaf); background: color-mix(in srgb, var(--leaf) 14%, transparent); box-shadow: 0 4px 14px color-mix(in srgb, var(--leaf) 20%, transparent); }
+.mk-photo-drop:active { transform: translateY(1px); }
+.mk-photo-drop-icon { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--leaf); color: #fff; box-shadow: 0 2px 6px color-mix(in srgb, var(--leaf) 35%, transparent); }
+.mk-photo-drop-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mk-photo-drop-text strong { font-size: 14px; font-weight: 700; color: var(--leaf); }
+.mk-photo-drop-text small { font-size: 12px; color: var(--ink-soft); }
+/* Chosen state */
+.mk-photo-chosen { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--leaf) 30%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--leaf) 5%, transparent); }
+.mk-photo-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.mk-photo-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.mk-photo-meta .loc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+.mk-photo-actions { display: flex; gap: 14px; }
+.mk-photo-actions .link-btn { cursor: pointer; font-weight: 600; }
+.mk-photo-actions label.link-btn { color: var(--leaf); }
+.mk-photo-actions button.link-btn { color: var(--ink-soft); }
+.mk-photo-actions button.link-btn:hover { color: #b4461f; }
 .mk-send-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .mk-send-row .btn-primary { display: inline-flex; align-items: center; gap: 6px; }
 .mk-send-row .loc { font-size: 12.5px; flex: 1; min-width: 220px; }
@@ -2644,6 +2664,7 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
 .mk-phone-top div div { font-size: 11px; opacity: 0.8; }
 .mk-chat { min-height: 150px; padding: 16px 12px; background: #ECE5DD; }
 .mk-bubble { position: relative; max-width: 88%; margin-left: auto; padding: 8px 10px 18px; border-radius: 8px 0 8px 8px; background: #DCF8C6; font-size: 13.5px; line-height: 1.45; color: #1f2c1a; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.08); }
+.mk-bubble-photo { display: block; width: 100%; max-height: 170px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; }
 .mk-time { position: absolute; right: 8px; bottom: 3px; display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; color: #6b7d63; }
 .mk-time svg { color: #34B7F1; }
 .mk-queue { margin-bottom: 20px; border-color: var(--leaf); }
