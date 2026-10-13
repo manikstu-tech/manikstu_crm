@@ -16,7 +16,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const res = NextResponse.redirect(new URL('/login', request.url), 303);
+  // Relative redirect: Hostinger proxies the app behind an internal host,
+  // so building the URL from request.url would point the browser at it.
+  const res = new NextResponse(null, { status: 303, headers: { Location: '/login' } });
   res.cookies.set(SESSION_COOKIE, '', { path: '/', maxAge: 0 });
   res.cookies.set(TOKEN_COOKIE, '', { path: '/', maxAge: 0 });
   return res;
