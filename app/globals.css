@@ -530,6 +530,24 @@ tr:last-child td {
 
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* A slim green scrollbar so it's clear a wide table scrolls sideways. */
+.table-wrap::-webkit-scrollbar { height: 7px; }
+.table-wrap::-webkit-scrollbar-track { background: transparent; }
+.table-wrap::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--leaf) 35%, transparent); border-radius: 4px; }
+.table-wrap::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--leaf) 55%, transparent); }
+@media (max-width: 768px) {
+  /* Phones: keep the first column (usually the farmer/lead name) in view while scrolling sideways. */
+  .table-wrap table th:first-child,
+  .table-wrap table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--card-bg);
+    box-shadow: 3px 0 5px -3px rgba(0, 0, 0, 0.18);
+  }
+  .table-wrap table thead th:first-child { z-index: 3; }
 }
 
 .cust {
@@ -1007,7 +1025,7 @@ td .chip { text-transform: capitalize; }
 .alert-pill.zero { background: var(--line); color: var(--ink-soft); }
 .clear-alert { font-size: 12.5px; font-weight: 600; color: var(--leaf); cursor: pointer; }
 
-.toolbar-actions { display: flex; gap: 10px; }
+.toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: -8px 0 18px; }
 .filter-input {
   font-family: inherit;
@@ -2127,6 +2145,8 @@ button.score-btn:last-child { border-right: none; }
 
 /* Follow-ups: coloured, sticky group bands so they stand out from the page */
 .fu-wrap { overflow: visible; }
+/* Phones: let the wide table scroll sideways instead of spilling off the screen. */
+@media (max-width: 768px) { .fu-wrap { overflow-x: auto; } }
 .fu-table .group-row td { position: sticky; top: 72px; z-index: 3; background: var(--card-bg); padding: 4px 0; border: none; }
 .group-band { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; border-radius: 8px; border-left: 4px solid var(--ink-soft); }
 .group-label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -2322,7 +2342,8 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--leaf); }
 .swatch.now { background: var(--gold); }
 .swatch.avg { width: 14px; height: 0; border-radius: 0; background: none; border-top: 2px dashed var(--ink-soft); }
-.trend { flex: 1; display: grid; grid-template-columns: 52px 1fr; grid-template-rows: minmax(200px, 1fr) auto; }
+.trend { flex: 1; min-width: 0; display: grid; grid-template-columns: 52px minmax(0, 1fr); grid-template-rows: minmax(200px, 1fr) auto; }
+.trend-plot { min-width: 0; }
 .trend-y { position: relative; }
 .trend-y span { position: absolute; right: 10px; transform: translateY(50%); font-size: 11px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .trend-plot { position: relative; border-bottom: 1px solid var(--ink-soft); }
@@ -2350,6 +2371,8 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
   .card-layout .shell { flex-direction: column; align-items: stretch; padding: 12px; gap: 12px; }
   .card-layout .sidebar { display: flex; position: static; width: auto; min-width: 0; max-width: 100%; flex: none; height: auto; padding: 16px 0 12px; border: 1px solid var(--line); border-radius: 12px; }
   .card-layout .main { padding: 0; }
+  /* Decorative bands bleed to the shell's 12px gutter, not the desktop 24px (which caused sideways page scroll). */
+  .card-layout .main > .frieze { margin: 0 -12px; }
   .sidebar-brand { padding: 0 16px 12px; margin-bottom: 12px; }
   .sidebar-brand .brand-logo { height: 48px; width: auto; max-width: 100%; }
   .card-layout .sidebar-nav { display: flex; gap: 6px; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 0 12px 4px; }
@@ -2438,6 +2461,7 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
 
 /* ---- Calling executive: Call desk focus queue ------------------------------------------ */
 .ce-desk { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; align-items: start; }
+.ce-desk > * { min-width: 0; }
 .ce-queue-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .ce-queue-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ink-soft); }
 .ce-sort { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
@@ -2693,8 +2717,8 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
 .mk-c-stats b { color: var(--ink); font-weight: 700; }
 .mk-c-open { margin-left: auto; color: var(--leaf); font-weight: 600; font-size: 12.5px; cursor: pointer; }
 .mk-contacts-head { align-items: center; flex-wrap: wrap; gap: 10px; }
-.mk-contacts-tools { display: flex; align-items: center; gap: 12px; }
-.mk-contacts-search { width: 260px; }
+.mk-contacts-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mk-contacts-search { width: 260px; max-width: 100%; }
 /* Marketing: both columns the same height; Send sits at the bottom of the form */
 .mk-form { display: flex; flex-direction: column; }
 .mk-step-last { margin-top: auto; padding-top: 18px; }
