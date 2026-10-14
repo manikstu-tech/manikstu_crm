@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
   { label: 'Telecalling Head', email: 'telecalling@manikstu.com', password: 'telecaller123' },
@@ -13,6 +14,7 @@ export default function LoginForm({ showDemoAccounts }: { showDemoAccounts: bool
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,14 +57,25 @@ export default function LoginForm({ showDemoAccounts }: { showDemoAccounts: bool
         </div>
         <div className="form-group">
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="password-field">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword(v => !v)}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </div>
         {error && <div className="login-error" role="alert">{error}</div>}
         <button type="submit" className="btn-primary login-submit" disabled={submitting}>

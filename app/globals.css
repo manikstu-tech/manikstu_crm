@@ -2801,3 +2801,10 @@ button.score-btn .num svg { vertical-align: -2px; margin-right: 4px; opacity: 0.
 @supports (grid-template-columns: subgrid) {
   .hbar-list.wide .hbar-row { grid-template-columns: subgrid; }
 }
+
+/* Login: show/hide password */
+.password-field { position: relative; }
+.password-field input { width: 100%; padding-right: 48px; }
+.password-toggle { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: none; border-radius: 8px; background: transparent; color: var(--ink-soft); cursor: pointer; }
+.password-toggle:hover { color: var(--forest); background: rgba(0, 0, 0, 0.04); }
+.password-toggle:focus-visible { outline: 2px solid var(--leaf); outline-offset: 1px; }
