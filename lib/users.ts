@@ -20,7 +20,7 @@ const USERS: UserRecord[] = [
   },
   {
     id: 'u-tl-101',
-    email: 'pradeep@manikstu.in',
+    email: 'telecalling@manikstu.com',
     name: 'Pradeep Mohanty',
     initials: 'PM',
     role: 'telecaller', // telecalling head: sees the whole telecalling team
