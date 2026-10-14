@@ -63,7 +63,7 @@ export default function Topbar({ title, subtitle, search, notifications, status,
                 <div className="who-role">{profile.role}</div>
               </div>
             </div>
-            <LogoutButton />
+            <div className="topbar-logout"><LogoutButton /></div>
           </div>
         </div>
       </div>

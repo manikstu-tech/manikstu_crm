@@ -2809,3 +2809,30 @@ button.score-btn .num svg { vertical-align: -2px; margin-right: 4px; opacity: 0.
 .password-toggle { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: none; border-radius: 8px; background: transparent; color: var(--ink-soft); cursor: pointer; }
 .password-toggle:hover { color: var(--forest); background: rgba(0, 0, 0, 0.04); }
 .password-toggle:focus-visible { outline: 2px solid var(--leaf); outline-offset: 1px; }
+
+/* Phones: no profile avatar in the top bar (the name already hides below 600px) */
+@media (max-width: 768px) { .topbar-profile .avatar { display: none; } }
+@media (max-width: 600px) { .topbar-profile { display: none; } }
+@media (max-width: 768px) {
+  .topbar-logout { display: none; }
+  .nav-toggle-current { flex: 1; }
+  .nav-logout { margin-left: auto; flex: none; }
+  .nav-logout .icon-btn { width: 44px; height: 44px; }
+}
+
+/* Phones: menu button top-left and logout top-right of the green card, logo centred between them */
+@media (max-width: 768px) {
+  .card-layout .sidebar { position: relative; }
+  .nav-toggle-row { display: block; padding: 0 56px; }
+  .nav-toggle-row .nav-toggle { position: absolute; top: 12px; left: 12px; }
+  .nav-toggle-row .nav-logout { position: absolute; top: 12px; right: 12px; margin: 0; }
+  .nav-toggle-current { display: block; text-align: center; }
+}
+
+/* Phones: the green card shows only the logo and the two corner buttons */
+@media (max-width: 768px) {
+  .nav-toggle-current { display: none; }
+  .card-layout .sidebar { padding-bottom: 0; }
+  .sidebar-brand { margin-bottom: 0; border-bottom: none; }
+  .sidebar-brand { padding-bottom: 14px; }
+}

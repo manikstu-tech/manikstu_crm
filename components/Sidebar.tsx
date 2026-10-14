@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import LogoutButton from './LogoutButton';
 
 export interface NavItem {
   key: string;
@@ -58,6 +59,8 @@ export default function Sidebar({ groups, activePage, onSelectPage }: SidebarPro
           <Menu size={20} />
         </button>
         <span className="nav-toggle-current">{active?.label ?? 'Menu'}</span>
+        {/* Phones: log out lives in the green card (the top bar's copy is hidden there). */}
+        <div className="nav-logout"><LogoutButton /></div>
       </div>
 
       <div className="nav-backdrop" onClick={() => setOpen(false)} aria-hidden />
