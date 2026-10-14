@@ -2373,12 +2373,30 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
   .card-layout .main { padding: 0; }
   /* Decorative bands bleed to the shell's 12px gutter, not the desktop 24px (which caused sideways page scroll). */
   .card-layout .main > .frieze { margin: 0 -12px; }
-  .sidebar-brand { padding: 0 16px 12px; margin-bottom: 12px; }
-  .sidebar-brand .brand-logo { height: 48px; width: auto; max-width: 100%; }
-  .card-layout .sidebar-nav { display: flex; gap: 6px; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 0 12px 4px; }
-  .card-layout .nav-group { display: contents; }
-  .card-layout .nav-group-label { display: none; }
-  .card-layout .nav-item { width: auto; margin: 0; flex: 0 0 auto; white-space: nowrap; }
+  /* Full-bleed header card: edge to edge, logo centred */
+  .card-layout .sidebar { align-self: stretch; margin: -12px -12px 0; width: auto; max-width: none; border-width: 0 0 1px; border-radius: 0 0 14px 14px; padding: 14px 0 12px; }
+  .sidebar-brand { padding: 0 16px 12px; margin-bottom: 12px; display: flex; justify-content: center; }
+  .sidebar-brand .brand-logo { height: 52px; width: auto; max-width: 100%; margin: 0 auto; }
+  /* The page list is a vertical drawer opened from the ☰ button */
+  .nav-toggle-row { display: flex; align-items: center; gap: 10px; padding: 0 12px; }
+  .nav-toggle-current { font-weight: 600; font-size: 15px; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-toggle { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border: 1px solid var(--line); border-radius: 10px; background: var(--card-bg); color: var(--forest); cursor: pointer; }
+  .nav-toggle:hover { border-color: var(--leaf); }
+  .nav-backdrop { position: fixed; inset: 0; z-index: 90; background: rgba(20, 30, 20, 0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s ease; display: block; }
+  .card-layout .sidebar-nav {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    width: min(300px, 86vw); display: flex; flex-direction: column; gap: 0;
+    overflow-x: hidden; overflow-y: auto; padding: 0 0 24px;
+    background: var(--cream, #FBF6EC); border-right: 1px solid var(--line); box-shadow: var(--shadow-hover);
+    transform: translateX(-100%); visibility: hidden;
+    transition: transform 0.22s ease, visibility 0s linear 0.22s;
+  }
+  .sidebar.menu-open .nav-backdrop { opacity: 1; pointer-events: auto; }
+  .sidebar.menu-open .sidebar-nav { transform: translateX(0); visibility: visible; transition: transform 0.22s ease; }
+  .nav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 12px 20px; margin-bottom: 8px; border-bottom: 1px solid var(--line); font-family: 'Playfair Display', serif; font-weight: 700; font-size: 18px; position: sticky; top: 0; background: inherit; }
+  .card-layout .nav-group { display: block; margin-bottom: 12px; }
+  .card-layout .nav-group-label { display: block; }
+  .card-layout .nav-item { width: calc(100% - 20px); margin: 1px 10px; min-height: 44px; flex: none; white-space: nowrap; }
   .topbar-sticky { position: static; margin-top: 0; padding-top: 0; }
   .topbar-card { padding: 10px 12px; gap: 10px; }
   .topbar-card .search { flex: 1 1 auto; padding: 0 10px; }
@@ -2387,6 +2405,8 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
   .stat-tiles { grid-auto-rows: auto; }
 }
 
+/* Desktop: the phone-only menu pieces stay hidden */
+@media (min-width: 769px) { .nav-toggle-row, .nav-backdrop, .nav-drawer-head { display: none; } }
 /* Sidebar "Soon" tag + coming-soon page */
 .nav-item .soon { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--white); background: var(--gold); padding: 2px 8px; border-radius: 6px; }
 .coming-soon { max-width: 640px; margin: 20px auto; padding: 44px 36px; text-align: center; display: flex; flex-direction: column; align-items: center; }
