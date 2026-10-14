@@ -14,7 +14,7 @@ export default function LoginPage() {
       <main className="login-main">
         <div className="login-card">
           <div className="login-brand">
-            <div className="brand-mark">🌾</div>
+            <img className="login-logo" src="/brand/samarth-logo.webp" alt="Manikstu" />
             <div>
               <div className="login-brand-name">Manikstu Samarth</div>
               <div className="login-brand-motto">One CRM for every lead, call and order.</div>
