@@ -1,7 +1,10 @@
 // Signed session cookie. Uses Web Crypto only, so it runs in both the
 // Edge middleware and Node route handlers.
 
-export type Role = 'manager' | 'telecaller' | 'calling-executive' | 'seller';
+export type Role = 'developer' | 'manager' | 'telecaller' | 'calling-executive' | 'seller';
+
+/** The super-admin role: may open every dashboard and section. */
+export const SUPER_ROLE: Role = 'developer';
 
 export interface SessionUser {
   id: string;
@@ -19,6 +22,7 @@ export const SESSION_COOKIE = 'mk_session';
 export const SESSION_MAX_AGE = 60 * 60 * 8; // one 8-hour shift
 
 export const ROLE_HOME: Record<Role, string> = {
+  developer: '/developer',
   manager: '/manager',
   telecaller: '/telecaller',
   'calling-executive': '/calling-executive',

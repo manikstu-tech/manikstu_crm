@@ -2873,3 +2873,13 @@ button.score-btn .num svg { vertical-align: -2px; margin-right: 4px; opacity: 0.
   .toolbar-actions { flex-wrap: wrap; }
   .toolbar-actions > * { flex: 1 1 auto; }
 }
+
+/* Developer super-admin console: portal launch cards */
+.dev-portal-card:hover {
+  border-color: var(--gold);
+  box-shadow: 0 4px 14px rgba(30, 90, 42, 0.10);
+}
+.dev-portal-card:focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 2px;
+}
