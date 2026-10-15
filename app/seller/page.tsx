@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import SellerDashboard from '../../components/SellerDashboard';
 import { requireRole } from '../../lib/auth';
-import { fetchSellerOrders, fetchSellerProducts } from '../../lib/sellerOrders';
+import { fetchSellerMe, fetchSellerOrders, fetchSellerProducts } from '../../lib/sellerOrders';
 import { sellerForUser } from '../../data/sellers';
+import { usingBackend } from '../../lib/backend';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,11 @@ export const metadata: Metadata = {
 
 export default async function SellerPage() {
   const user = await requireRole('seller');
-  const seller = sellerForUser(user);
+
+  // In live mode the seller comes from the backend (/seller/me), keyed by the
+  // signed-in user — not the sample SELLERS list. Offline falls back to it.
+  const me = usingBackend() ? await fetchSellerMe() : null;
+  const seller = usingBackend() ? me?.seller ?? null : sellerForUser(user);
   if (!seller) {
     return (
       <main className="login-main">
@@ -28,7 +33,8 @@ export default async function SellerPage() {
   // and the orders that contain their products (including website orders that
   // arrived through the integration endpoint). No sample data — the dashboard
   // starts empty until real products and orders exist.
-  const [backend, products] = await Promise.all([fetchSellerOrders(), fetchSellerProducts()]);
+  const backend = await fetchSellerOrders();
+  const products = me?.products ?? (await fetchSellerProducts()) ?? [];
   const orders = backend?.orders ?? [];
   const mixedOrderIds = backend?.mixedOrderIds ?? [];
 

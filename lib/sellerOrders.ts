@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { TOKEN_COOKIE, backendCall, usingBackend } from './backend';
 import type { SalesOrder } from '../data/managerDashboard';
 import type { CatalogProduct, ProductCategory } from '../data/catalogProducts';
+import type { Seller } from '../data/sellers';
 
 /**
  * The signed-in seller's orders from the CRM backend — their slice of every
@@ -101,6 +102,43 @@ export async function fetchSellerProducts(): Promise<CatalogProduct[] | null> {
     const body = await r.json().catch(() => null);
     if (!body || !Array.isArray(body.products)) return null;
     return (body.products as BackendProduct[]).map(toCatalogProduct);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The signed-in seller's own business record and catalogue, straight from the
+ * CRM backend's /seller/me. This is how the dashboard knows which seller the
+ * login belongs to in live mode — not the sample SELLERS list. Returns null in
+ * local mode, if the login isn't linked to a seller, or on any failure.
+ */
+export async function fetchSellerMe(): Promise<{ seller: Seller; products: CatalogProduct[] } | null> {
+  if (!usingBackend()) return null;
+  const token = cookies().get(TOKEN_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const r = await backendCall('/seller/me', { token });
+    if (!r.ok) return null;
+    const body = await r.json().catch(() => null);
+    if (!body || !body.seller) return null;
+    const s = body.seller as {
+      id: number; business: string; owner: string; city: string;
+      gstin: string; commissionPct: number; payoutAfterDays: number;
+    };
+    const products = Array.isArray(body.products) ? (body.products as BackendProduct[]).map(toCatalogProduct) : [];
+    const seller: Seller = {
+      id: s.id,
+      userId: '',
+      business: s.business,
+      owner: s.owner,
+      city: s.city,
+      gstin: s.gstin,
+      commissionPct: s.commissionPct,
+      payoutAfterDays: s.payoutAfterDays,
+      productIds: products.map(p => p.id),
+    };
+    return { seller, products };
   } catch {
     return null;
   }
