@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Store,
   Trash2,
+  UserPlus,
   Users,
 } from 'lucide-react';
 
@@ -116,6 +117,15 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
   const [editActive, setEditActive] = useState(true);
   const [editBusy, setEditBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Create
+  const [createOpen, setCreateOpen] = useState(false);
+  const [nuName, setNuName] = useState('');
+  const [nuRole, setNuRole] = useState('manager');
+  const [nuEmail, setNuEmail] = useState('');
+  const [nuPassword, setNuPassword] = useState('');
+  const [nuMobile, setNuMobile] = useState('');
+  const [nuRegion, setNuRegion] = useState('');
+  const [createBusy, setCreateBusy] = useState(false);
 
   const loadUsers = async () => {
     setLoadingUsers(true);
@@ -178,6 +188,38 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
       showToast('⚠️ Could not reach the server.');
     }
     setEditBusy(false);
+  };
+
+  const openCreate = () => {
+    setNuName(''); setNuRole('manager'); setNuEmail(''); setNuPassword(''); setNuMobile(''); setNuRegion('');
+    setCreateOpen(true);
+  };
+
+  const submitCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateBusy(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: nuName.trim(),
+          role: nuRole,
+          email: nuEmail.trim(),
+          password: nuPassword,
+          mobile: nuMobile.trim() || null,
+          region: nuRegion.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(`⚠️ ${data.error || 'Could not create the account'}`); setCreateBusy(false); return; }
+      showToast(`Created ${data.data?.name ?? nuName} (${ROLE_LABEL[nuRole] ?? nuRole})`);
+      setCreateOpen(false);
+      loadUsers();
+    } catch {
+      showToast('⚠️ Could not reach the server.');
+    }
+    setCreateBusy(false);
   };
 
   const handleDelete = async (u: AdminUser) => {
@@ -266,9 +308,12 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
               title="Staff accounts"
               desc="Set a new password for any login. The person can sign in with it immediately, or tick “require change” to make them set their own on first login."
             >
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
                 <button type="button" className="btn-secondary" onClick={loadUsers} disabled={loadingUsers} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <RefreshCw size={15} /> {loadingUsers ? 'Loading…' : 'Refresh'}
+                </button>
+                <button type="button" className="btn-primary" onClick={openCreate} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <UserPlus size={15} /> Add account
                 </button>
               </div>
 
@@ -433,6 +478,53 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* Create account modal */}
+      <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Add a new account">
+        <form onSubmit={submitCreate}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Role</label>
+              <select value={nuRole} onChange={e => setNuRole(e.target.value)}>
+                <option value="manager">Manager</option>
+                <option value="telecaller">Telecalling Head</option>
+                <option value="seller">Seller</option>
+                <option value="developer">Developer (super admin)</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Full name</label>
+              <input type="text" required placeholder="e.g. Ramesh Nayak" value={nuName} onChange={e => setNuName(e.target.value)} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Login email</label>
+            <input type="email" required placeholder="name@manikstu.com" value={nuEmail} onChange={e => setNuEmail(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <input type="text" required placeholder="At least 8 chars, a letter and a number" value={nuPassword} onChange={e => setNuPassword(e.target.value)} />
+            <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>Shown as text so you can copy it to share with the person.</div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Mobile (optional)</label>
+              <input type="tel" placeholder="10-digit mobile" value={nuMobile} onChange={e => setNuMobile(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Region (optional)</label>
+              <input type="text" placeholder="e.g. Bhubaneswar" value={nuRegion} onChange={e => setNuRegion(e.target.value)} />
+            </div>
+          </div>
+          <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '2px 0 0' }}>
+            Calling executives are added by the telecalling head, so they aren’t listed here. A staff ID is generated automatically.
+          </p>
+          <div className="modal-footer">
+            <button type="button" className="btn-secondary" onClick={() => setCreateOpen(false)} disabled={createBusy}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={createBusy || nuName.trim().length < 3 || nuPassword.length < 8 || !nuEmail.trim()}>{createBusy ? 'Creating…' : 'Create account'}</button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
