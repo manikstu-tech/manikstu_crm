@@ -15,11 +15,13 @@ import {
   LayoutDashboard,
   LayoutGrid,
   type LucideIcon,
+  Pencil,
   PhoneCall,
   RefreshCw,
   Server,
   ShieldCheck,
   Store,
+  Trash2,
   Users,
 } from 'lucide-react';
 
@@ -108,6 +110,12 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
   const [pwValue, setPwValue] = useState('');
   const [pwMustChange, setPwMustChange] = useState(false);
   const [pwBusy, setPwBusy] = useState(false);
+  // Edit (email / active)
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [editEmail, setEditEmail] = useState('');
+  const [editActive, setEditActive] = useState(true);
+  const [editBusy, setEditBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadUsers = async () => {
     setLoadingUsers(true);
@@ -147,6 +155,44 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
       showToast('⚠️ Could not reach the server.');
     }
     setPwBusy(false);
+  };
+
+  const openEdit = (u: AdminUser) => { setEditUser(u); setEditEmail(u.email ?? ''); setEditActive(u.isActive); };
+
+  const submitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${editUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: editEmail.trim() || null, isActive: editActive }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(`⚠️ ${data.error || 'Could not update the account'}`); setEditBusy(false); return; }
+      showToast(`Updated ${editUser.name}`);
+      setEditUser(null);
+      loadUsers();
+    } catch {
+      showToast('⚠️ Could not reach the server.');
+    }
+    setEditBusy(false);
+  };
+
+  const handleDelete = async (u: AdminUser) => {
+    if (!window.confirm(`Delete the account for ${u.name} (${u.staffId})? This cannot be undone.`)) return;
+    setDeletingId(u.id);
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(`⚠️ ${data.error || 'Could not delete the account'}`); setDeletingId(null); return; }
+      showToast(`Deleted ${u.name}`);
+      loadUsers();
+    } catch {
+      showToast('⚠️ Could not reach the server.');
+    }
+    setDeletingId(null);
   };
 
   const meta: Record<string, { title: string; sub: string }> = {
@@ -249,9 +295,19 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
                           {u.mustChangePassword && <div style={{ fontSize: 11.5, color: 'var(--gold)' }}>must change pw</div>}
                         </Td>
                         <Td>
-                          <button type="button" className="btn-primary" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => { setPwUser(u); setPwValue(''); setPwMustChange(false); }}>
-                            Set password
-                          </button>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <button type="button" className="btn-primary" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => { setPwUser(u); setPwValue(''); setPwMustChange(false); }}>
+                              Set password
+                            </button>
+                            <button type="button" className="icon-btn" title="Edit email / status" aria-label="Edit account" onClick={() => openEdit(u)}>
+                              <Pencil size={15} />
+                            </button>
+                            {u.role !== 'developer' && u.id !== user.id && (
+                              <button type="button" className="icon-btn" title="Delete account" aria-label="Delete account" disabled={deletingId === u.id} onClick={() => handleDelete(u)} style={{ color: '#B42318' }}>
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
                         </Td>
                       </tr>
                     ))}
@@ -344,6 +400,36 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={() => setPwUser(null)} disabled={pwBusy}>Cancel</button>
               <button type="submit" className="btn-primary" disabled={pwBusy || pwValue.length < 8}>{pwBusy ? 'Saving…' : 'Set password'}</button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Edit account (email / active) modal */}
+      <Modal isOpen={editUser !== null} onClose={() => setEditUser(null)} title={editUser ? `Edit account · ${editUser.name}` : 'Edit account'}>
+        {editUser && (
+          <form onSubmit={submitEdit}>
+            <p style={{ margin: '0 0 14px', color: 'var(--ink-soft)', fontSize: 13 }}>
+              {ROLE_LABEL[editUser.role] ?? editUser.role} · <code style={codeStyle}>{editUser.staffId}</code>
+            </p>
+            <div className="form-group">
+              <label>Login email</label>
+              <input
+                type="email"
+                autoFocus
+                placeholder="name@manikstu.com (leave empty to clear)"
+                value={editEmail}
+                onChange={e => setEditEmail(e.target.value)}
+              />
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>This is the address the person signs in with. They can also use their Staff ID or mobile.</div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, margin: '6px 0 4px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={editActive} onChange={e => setEditActive(e.target.checked)} />
+              Account active (can sign in)
+            </label>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => setEditUser(null)} disabled={editBusy}>Cancel</button>
+              <button type="submit" className="btn-primary" disabled={editBusy}>{editBusy ? 'Saving…' : 'Save changes'}</button>
             </div>
           </form>
         )}
