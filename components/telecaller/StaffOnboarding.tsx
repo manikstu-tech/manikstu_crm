@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Copy, Eye, EyeOff, KeyRound, MessageCircle, RefreshCw, UserPlus, X } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, KeyRound, MessageCircle, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
 import { TELECALLERS, VERTICALS } from '../../data/managerDashboard';
 import type { PublicStaffAccount } from '../../lib/staffAccounts';
 import Modal from '../Modal';
@@ -169,6 +169,19 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
     }
   };
 
+  const remove = async (a: PublicStaffAccount) => {
+    if (!window.confirm(`Delete ${a.name} (${a.staffId})? This permanently removes the account and can't be undone.`)) return;
+    try {
+      const res = await fetch(`/api/staff/${a.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { onToast(data.error || 'Could not delete the staff member'); return; }
+      onToast(`${a.name} deleted`);
+      load();
+    } catch {
+      onToast('Could not reach the server. Try again.');
+    }
+  };
+
   const submitReset = async () => {
     if (!resetFor) return;
     const problem = passwordProblem(resetPw);
@@ -272,6 +285,7 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
                           {a.isActive
                             ? <button className="kanban-btn danger-text" onClick={() => deactivate(a)}>Deactivate</button>
                             : <button className="kanban-btn" onClick={() => patch(a, { isActive: true }, `${a.name} activated`)}>Activate</button>}
+                          <button className="kanban-btn danger-text" onClick={() => remove(a)} title="Delete this staff account"><Trash2 size={11} /> Delete</button>
                         </div>
                       </td>
                     </tr>

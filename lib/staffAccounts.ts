@@ -113,3 +113,12 @@ export const resetPassword = (id: string, password: string) =>
 
 export const setAccountFlags = (id: string, flags: { isActive?: boolean; detailsShared?: boolean; trainingDone?: boolean }) =>
   update(id, a => ({ ...a, ...flags }));
+
+/** Permanently remove a staff account. Returns false if the id wasn't found. */
+export function removeAccount(id: string): boolean {
+  const accounts = load();
+  const next = accounts.filter(a => a.id !== id);
+  if (next.length === accounts.length) return false;
+  save(next);
+  return true;
+}
