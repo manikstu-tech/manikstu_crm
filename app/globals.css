@@ -2836,3 +2836,40 @@ button.score-btn .num svg { vertical-align: -2px; margin-right: 4px; opacity: 0.
   .sidebar-brand { margin-bottom: 0; border-bottom: none; }
   .sidebar-brand { padding-bottom: 14px; }
 }
+
+/* ============================================================================
+   Responsive polish — comfortable touch targets, clean scrolling, aligned
+   headings on phones/tablets. Scoped to small screens so desktop is untouched.
+   ========================================================================== */
+
+/* Wide tables scroll smoothly with a visible, slim scrollbar on touch devices
+   instead of crushing columns. */
+@media (max-width: 1024px) {
+  .table-wrap { -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: var(--track) transparent; }
+  .table-wrap::-webkit-scrollbar { height: 6px; }
+  .table-wrap::-webkit-scrollbar-track { background: transparent; }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--track); border-radius: 4px; }
+}
+
+@media (max-width: 640px) {
+  /* Easier tap targets (Apple/Material ~44px guidance) */
+  .btn-primary, .btn-secondary { min-height: 42px; }
+  .filter-chip, .lf-pill, .view-btn { min-height: 38px; display: inline-flex; align-items: center; }
+  .pill-select select { min-height: 40px; }
+  .icon-btn { width: 42px; height: 42px; }
+  .filter-select { min-height: 42px; }
+
+  /* Tighter, better-aligned page heading */
+  .page-head { margin: 16px 2px 14px; }
+  .page-head h1 { font-size: 22px; line-height: 1.2; }
+  .page-head .sub { font-size: 12.5px; }
+
+  /* Panels: a touch less inner padding so content isn't cramped at the edges */
+  .panel { padding: 18px 16px; }
+  .panel-head h2 { font-size: 16px; }
+
+  /* Toolbars wrap and space evenly rather than overflowing */
+  .page-toolbar { gap: 10px; }
+  .toolbar-actions { flex-wrap: wrap; }
+  .toolbar-actions > * { flex: 1 1 auto; }
+}
