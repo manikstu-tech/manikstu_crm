@@ -170,7 +170,7 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
   };
 
   const remove = async (a: PublicStaffAccount) => {
-    if (!window.confirm(`Delete ${a.name} (${a.staffId})? This permanently removes the account and can't be undone.`)) return;
+    if (!window.confirm(`Delete ${a.name} (${a.staffId})? This permanently removes the account and their leads, calls and sales. This can't be undone — to keep their records, use Deactivate instead.`)) return;
     try {
       const res = await fetch(`/api/staff/${a.id}`, { method: 'DELETE' });
       const data = await res.json().catch(() => ({}));
