@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar, { NavGroup } from './Sidebar';
 import Topbar from './Topbar';
+import Modal from './Modal';
 import FooterFrieze from './FooterFrieze';
 import type { SessionUser } from '../lib/session';
 import {
@@ -15,6 +16,7 @@ import {
   LayoutGrid,
   type LucideIcon,
   PhoneCall,
+  RefreshCw,
   Server,
   ShieldCheck,
   Store,
@@ -30,6 +32,20 @@ interface Portal {
   manages: string;
   login: string;
   icon: LucideIcon;
+}
+
+/** A staff account as returned by /api/admin/users. */
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string;
+  staffId: string;
+  mobile: string | null;
+  region: string | null;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  lastLoginAt: string | null;
 }
 
 const PORTALS: Portal[] = [
@@ -71,22 +87,72 @@ const PORTALS: Portal[] = [
   },
 ];
 
-/** All roles in the CRM, for the access reference. */
-const ROLES: Array<{ code: string; who: string; can: string; login: string }> = [
-  { code: 'developer', who: 'Platform developer (you)', can: 'Super admin — opens every dashboard and every API endpoint; bypasses all role gates.', login: 'developer@manikstu.com' },
-  { code: 'manager', who: 'Smurti Nayak · MNK-MGR-042', can: 'Full operations view, telecalling oversight, inventory, finance and reports.', login: 'manager@manikstu.com' },
-  { code: 'telecaller', who: 'Pradeep Mohanty · MK-TL-101', can: 'Telecalling head: runs the team and onboards calling executives.', login: 'telecalling@manikstu.com' },
-  { code: 'calling-executive', who: 'Agents (e.g. MK-CE-212)', can: 'Works only their own assigned leads, calls, follow-ups and complaints.', login: 'bikash@manikstu.in' },
-  { code: 'seller', who: 'Sanjay Rath · MK-SL-301', can: 'Manages the catalogue, stock and website orders. No telecalling access.', login: 'sanjay@manikstu.in' },
-];
+const ROLE_LABEL: Record<string, string> = {
+  developer: 'Developer', manager: 'Manager', telecaller: 'Telecalling Head',
+  'calling-executive': 'Calling Executive', seller: 'Seller',
+};
 
 export default function DeveloperDashboard({ user, backend = false }: { user: SessionUser; backend?: boolean }) {
   const router = useRouter();
   const [activePage, setActivePage] = useState<string>('overview');
 
+  // Toast
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3200); };
+
+  // Accounts
+  const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [pwUser, setPwUser] = useState<AdminUser | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const [pwMustChange, setPwMustChange] = useState(false);
+  const [pwBusy, setPwBusy] = useState(false);
+
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    setUsersError(null);
+    try {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      if (!res.ok) { setUsersError(data.error || 'Could not load accounts.'); setUsers([]); }
+      else setUsers(data.data as AdminUser[]);
+    } catch {
+      setUsersError('Could not reach the server.'); setUsers([]);
+    }
+    setLoadingUsers(false);
+  };
+
+  useEffect(() => {
+    if (activePage === 'accounts' && users === null) loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePage]);
+
+  const submitPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pwUser) return;
+    setPwBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${pwUser.id}/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwValue, mustChange: pwMustChange }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(`⚠️ ${data.error || 'Could not set the password'}`); setPwBusy(false); return; }
+      showToast(`Password updated for ${pwUser.name}`);
+      setPwUser(null); setPwValue(''); setPwMustChange(false);
+      loadUsers();
+    } catch {
+      showToast('⚠️ Could not reach the server.');
+    }
+    setPwBusy(false);
+  };
+
   const meta: Record<string, { title: string; sub: string }> = {
-    overview: { title: 'Developer · Super Admin', sub: 'One control centre for the whole Manikstu Samarth CRM. Open any portal, review access and check the system.' },
+    overview: { title: 'Developer · Super Admin', sub: 'One control centre for the whole Manikstu Samarth CRM. Open any portal, manage accounts and check the system.' },
     portals: { title: 'Role Portals', sub: 'Open any role’s dashboard directly. As the super admin you are allowed into every section.' },
+    accounts: { title: 'Accounts & Passwords', sub: 'Every staff login. Set or reset the password for any role from here.' },
     roles: { title: 'Roles & Access', sub: 'Every role in the CRM, who holds it and what it can do.' },
     system: { title: 'System Status', sub: 'Backend connection, production endpoints and the deploy helpers.' },
   };
@@ -94,7 +160,7 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
 
   const navGroups: NavGroup[] = [
     { label: 'Overview', items: [{ key: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
-    { label: 'Manage', items: [{ key: 'portals', label: 'Role portals', icon: LayoutGrid }] },
+    { label: 'Manage', items: [{ key: 'portals', label: 'Role portals', icon: LayoutGrid }, { key: 'accounts', label: 'Accounts & passwords', icon: KeyRound }] },
     {
       label: 'Administration',
       items: [
@@ -108,6 +174,12 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
 
   return (
     <div className="card-layout">
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, background: 'var(--forest)', color: '#FFF', padding: '12px 20px', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.25)', zIndex: 2000, fontWeight: 600, fontSize: 13.5 }}>
+          {toast.startsWith('⚠️') ? toast : `✅ ${toast}`}
+        </div>
+      )}
+
       <div className="shell">
         <Sidebar groups={navGroups} activePage={activePage} onSelectPage={setActivePage} />
 
@@ -120,26 +192,16 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
 
           {activePage === 'overview' && (
             <>
-              {/* System KPI tiles */}
               <div style={gridTiles}>
                 <StatTile label="Role portals" value="4" hint="Manager · Head · Executive · Seller" icon={LayoutGrid} />
-                <StatTile label="Roles in CRM" value="5" hint="Including this super admin" icon={ShieldCheck} />
-                <StatTile
-                  label="Backend"
-                  value={backend ? 'Connected' : 'Offline demo'}
-                  hint={backend ? 'Live Laravel API' : 'Local sample data'}
-                  icon={Database}
-                  tone={backend ? 'ok' : 'warn'}
-                />
-                <StatTile label="Access" value="Full" hint="Bypasses every role gate" icon={KeyRound} tone="ok" />
+                <StatTile label="Staff accounts" value={users ? String(users.length) : '—'} hint="Manage logins & passwords" icon={KeyRound} />
+                <StatTile label="Backend" value={backend ? 'Connected' : 'Offline demo'} hint={backend ? 'Live Laravel API' : 'Local sample data'} icon={Database} tone={backend ? 'ok' : 'warn'} />
+                <StatTile label="Access" value="Full" hint="Bypasses every role gate" icon={ShieldCheck} tone="ok" />
               </div>
 
-              {/* Quick launch */}
               <SectionCard title="Launch a portal" desc="Jump straight into any role’s dashboard.">
                 <div style={gridPortals}>
-                  {PORTALS.map(p => (
-                    <PortalCard key={p.role} portal={p} onOpen={() => open(p.href)} />
-                  ))}
+                  {PORTALS.map(p => <PortalCard key={p.role} portal={p} onOpen={() => open(p.href)} />)}
                 </div>
               </SectionCard>
             </>
@@ -148,24 +210,69 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
           {activePage === 'portals' && (
             <SectionCard title="All role portals" desc="Each portal is the live dashboard for that role. Opening one signs you in there as the super admin.">
               <div style={gridPortals}>
-                {PORTALS.map(p => (
-                  <PortalCard key={p.role} portal={p} wide onOpen={() => open(p.href)} />
-                ))}
+                {PORTALS.map(p => <PortalCard key={p.role} portal={p} wide onOpen={() => open(p.href)} />)}
+              </div>
+            </SectionCard>
+          )}
+
+          {activePage === 'accounts' && (
+            <SectionCard
+              title="Staff accounts"
+              desc="Set a new password for any login. The person can sign in with it immediately, or tick “require change” to make them set their own on first login."
+            >
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                <button type="button" className="btn-secondary" onClick={loadUsers} disabled={loadingUsers} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <RefreshCw size={15} /> {loadingUsers ? 'Loading…' : 'Refresh'}
+                </button>
+              </div>
+
+              {usersError && <div className="inline-alert" role="alert" style={{ marginBottom: 12 }}>{usersError}</div>}
+
+              <div className="table-wrap">
+                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <Th>Name</Th><Th>Role</Th><Th>Login</Th><Th>Staff ID</Th><Th>Status</Th><Th>Action</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users && users.length > 0 && users.map(u => (
+                      <tr key={u.id} style={{ borderTop: '1px solid var(--line)' }}>
+                        <Td><strong>{u.name}</strong></Td>
+                        <Td><span style={roleChip(u.role === 'developer')}>{ROLE_LABEL[u.role] ?? u.role}</span></Td>
+                        <Td style={{ color: 'var(--ink-soft)' }}>{u.email || u.mobile || '—'}</Td>
+                        <Td><code style={codeStyle}>{u.staffId}</code></Td>
+                        <Td>
+                          {u.isActive
+                            ? <span style={{ color: 'var(--forest)', fontWeight: 600 }}>Active</span>
+                            : <span style={{ color: 'var(--ink-soft)' }}>Inactive</span>}
+                          {u.mustChangePassword && <div style={{ fontSize: 11.5, color: 'var(--gold)' }}>must change pw</div>}
+                        </Td>
+                        <Td>
+                          <button type="button" className="btn-primary" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => { setPwUser(u); setPwValue(''); setPwMustChange(false); }}>
+                            Set password
+                          </button>
+                        </Td>
+                      </tr>
+                    ))}
+                    {users && users.length === 0 && !usersError && (
+                      <tr><Td style={{ color: 'var(--ink-soft)' }}>No accounts found.</Td></tr>
+                    )}
+                    {users === null && !usersError && (
+                      <tr><Td style={{ color: 'var(--ink-soft)' }}>Loading accounts…</Td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </SectionCard>
           )}
 
           {activePage === 'roles' && (
-            <SectionCard title="Roles & access" desc="What each role can see and do, and its seeded login (local demo passwords differ from production).">
+            <SectionCard title="Roles & access" desc="What each role can see and do, and its seeded login.">
               <div className="table-wrap">
                 <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr>
-                      <Th>Role</Th>
-                      <Th>Who</Th>
-                      <Th>Can do</Th>
-                      <Th>Login (email)</Th>
-                    </tr>
+                    <tr><Th>Role</Th><Th>Who</Th><Th>Can do</Th><Th>Login (email)</Th></tr>
                   </thead>
                   <tbody>
                     {ROLES.map(r => (
@@ -189,13 +296,7 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
           {activePage === 'system' && (
             <>
               <div style={gridTiles}>
-                <StatTile
-                  label="Backend mode"
-                  value={backend ? 'Live' : 'Offline'}
-                  hint={backend ? 'CRM_API_BASE is set' : 'CRM_API_BASE is empty'}
-                  icon={Database}
-                  tone={backend ? 'ok' : 'warn'}
-                />
+                <StatTile label="Backend mode" value={backend ? 'Live' : 'Offline'} hint={backend ? 'CRM_API_BASE is set' : 'CRM_API_BASE is empty'} icon={Database} tone={backend ? 'ok' : 'warn'} />
                 <StatTile label="Session" value="8h shift" hint="Signed HMAC cookie" icon={KeyRound} />
                 <StatTile label="Role" value="developer" hint={user.name} icon={ShieldCheck} tone="ok" />
               </div>
@@ -207,13 +308,6 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
                   <li><strong>Website:</strong> <code style={codeStyle}>manikstu.com</code> · <strong>Website API:</strong> <code style={codeStyle}>api.manikstu.com</code></li>
                 </ul>
               </SectionCard>
-
-              <SectionCard title="Deploy helpers (backend)" desc="Token-guarded, one-off scripts for shared hosting without SSH. Delete after use.">
-                <ul style={listStyle}>
-                  <li><code style={codeStyle}>migrate.php?token=…</code> — run pending migrations in-process (needs <code style={codeStyle}>MIGRATE_TOKEN</code>).</li>
-                  <li><code style={codeStyle}>reset-password.php?token=…</code> — reset the telecalling head login (needs <code style={codeStyle}>RESET_TOKEN</code>).</li>
-                </ul>
-              </SectionCard>
             </>
           )}
 
@@ -223,11 +317,51 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
           <FooterFrieze />
         </main>
       </div>
+
+      {/* Set-password modal */}
+      <Modal isOpen={pwUser !== null} onClose={() => setPwUser(null)} title={pwUser ? `Set password · ${pwUser.name}` : 'Set password'}>
+        {pwUser && (
+          <form onSubmit={submitPassword}>
+            <p style={{ margin: '0 0 14px', color: 'var(--ink-soft)', fontSize: 13 }}>
+              {ROLE_LABEL[pwUser.role] ?? pwUser.role} · <code style={codeStyle}>{pwUser.email || pwUser.mobile || pwUser.staffId}</code>
+            </p>
+            <div className="form-group">
+              <label>New password</label>
+              <input
+                type="text"
+                required
+                autoFocus
+                placeholder="At least 8 chars, a letter and a number"
+                value={pwValue}
+                onChange={e => setPwValue(e.target.value)}
+              />
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6 }}>Shown as text so you can copy it to share with the person.</div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, margin: '6px 0 4px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={pwMustChange} onChange={e => setPwMustChange(e.target.checked)} />
+              Require the user to change it on first login
+            </label>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => setPwUser(null)} disabled={pwBusy}>Cancel</button>
+              <button type="submit" className="btn-primary" disabled={pwBusy || pwValue.length < 8}>{pwBusy ? 'Saving…' : 'Set password'}</button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }
 
-/* ---------- small presentational pieces (theme-coloured inline styles) ---------- */
+/** All roles in the CRM, for the access reference. */
+const ROLES: Array<{ code: string; who: string; can: string; login: string }> = [
+  { code: 'developer', who: 'Platform developer (you)', can: 'Super admin — opens every dashboard and every API endpoint; bypasses all role gates.', login: 'developer@manikstu.com' },
+  { code: 'manager', who: 'Smurti Nayak · MNK-MGR-042', can: 'Full operations view, telecalling oversight, inventory, finance and reports.', login: 'manager@manikstu.com' },
+  { code: 'telecaller', who: 'Pradeep Mohanty · MK-TL-101', can: 'Telecalling head: runs the team and onboards calling executives.', login: 'telecalling@manikstu.com' },
+  { code: 'calling-executive', who: 'Agents (e.g. MK-CE-212)', can: 'Works only their own assigned leads, calls, follow-ups and complaints.', login: 'bikash@manikstu.in' },
+  { code: 'seller', who: 'Sanjay Rath · MK-SL-301', can: 'Manages the catalogue, stock and website orders. No telecalling access.', login: 'sanjay@manikstu.in' },
+];
+
+/* ---------- presentational pieces (theme-coloured inline styles) ---------- */
 
 function StatTile({ label, value, hint, icon: Icon, tone = 'default' }: {
   label: string; value: string; hint: string; icon: LucideIcon; tone?: 'default' | 'ok' | 'warn';
