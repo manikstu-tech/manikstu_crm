@@ -1,4 +1,4 @@
-import { SALES_ORDERS, TRACKER_PRODUCTS, TRACKER_SALES, WEB_ENQUIRIES, type TrackerSale } from '../data/managerDashboard';
+import { SALES_ORDERS, TELECALLERS, TRACKER_PRODUCTS, TRACKER_SALES, WEB_ENQUIRIES, type TrackerSale } from '../data/managerDashboard';
 import { INITIAL_COMPLAINTS } from '../data/complaints';
 import { SAMPLE_CAMPAIGNS } from '../data/marketing';
 import { INITIAL_CUSTOMERS, INITIAL_FPOS, INITIAL_FRANCHISES, INITIAL_TRANSACTIONS } from '../data/initialData';
@@ -15,6 +15,9 @@ export function emptySampleData(): void {
   for (const list of [
     SALES_ORDERS, TRACKER_SALES, WEB_ENQUIRIES, INITIAL_COMPLAINTS, SAMPLE_CAMPAIGNS,
     INITIAL_CUSTOMERS, INITIAL_FRANCHISES, INITIAL_FPOS, INITIAL_TRANSACTIONS, INITIAL_STOCK,
+    // The sample executives: without this, a backend with no executives falls back
+    // to showing these fake names (workload, assignment lists, etc.).
+    TELECALLERS,
   ] as unknown[][]) {
     list.length = 0;
   }

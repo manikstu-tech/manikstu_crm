@@ -96,7 +96,7 @@ export default function EnquiriesView({
   const [replyDraft, setReplyDraft] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
   const [leadVertical, setLeadVertical] = useState(VERTICALS[0].id);
-  const [leadCaller, setLeadCaller] = useState(TELECALLERS[0].id);
+  const [leadCaller, setLeadCaller] = useState(TELECALLERS[0]?.id ?? 0);
   const canAssign = !!onAssignToCaller;
   /** Enquiries being assigned to a caller (null = picker closed). */
   const [assignIds, setAssignIds] = useState<number[] | null>(null);

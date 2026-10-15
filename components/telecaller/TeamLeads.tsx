@@ -31,7 +31,7 @@ export default function TeamLeads({ data, execSummary, searchQuery, initialCalle
   const [source, setSource] = useState('all');
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [target, setTarget] = useState<number>(TELECALLERS.find(t => t.is_active)!.id);
+  const [target, setTarget] = useState<number>(TELECALLERS.find(t => t.is_active)?.id ?? 0);
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
