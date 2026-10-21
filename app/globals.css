@@ -1738,6 +1738,8 @@ code { font-size: 11.5px; background: var(--line); border-radius: 4px; padding: 
 .login-card h1 { font-size: 26px; margin-bottom: 6px; text-align: center; }
 .login-sub { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 22px; text-align: center; }
 .login-form .form-group { margin-bottom: 16px; }
+.login-method { display: flex; gap: 8px; margin-bottom: 16px; }
+.login-method .filter-chip { flex: 1; }
 .login-submit { width: 100%; margin-top: 4px; }
 .login-submit:disabled { opacity: 0.7; cursor: wait; transform: none; }
 .login-error {

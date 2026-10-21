@@ -67,8 +67,10 @@ function passwordMatches(password: string, stored: string): boolean {
   return timingSafeEqual(actual, expected);
 }
 
-export function authenticate(email: string, password: string): SessionUser | null {
-  const record = USERS.find(u => u.email === email.trim().toLowerCase());
+/** `login` is the email or the Staff ID (both case-insensitive). */
+export function authenticate(login: string, password: string): SessionUser | null {
+  const id = login.trim().toLowerCase();
+  const record = USERS.find(u => u.email === id || u.staffId.toLowerCase() === id);
   if (!record || !passwordMatches(password, record.passwordHash)) return null;
   const { email: _email, passwordHash: _hash, ...user } = record;
   return user;

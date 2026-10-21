@@ -4,18 +4,19 @@ import { createSessionToken, ROLE_HOME, SESSION_COOKIE, SESSION_MAX_AGE, type Ro
 import { API_BASE, TOKEN_COOKIE, backendCall, backendError, usingBackend } from '../../../../lib/backend';
 
 export async function POST(request: Request) {
-  let email = '';
+  // `login` is the email or the Staff ID; `email` is still accepted from older clients.
+  let login = '';
   let password = '';
   try {
     const body = await request.json();
-    email = typeof body.email === 'string' ? body.email : '';
+    login = typeof body.login === 'string' ? body.login.trim() : typeof body.email === 'string' ? body.email.trim() : '';
     password = typeof body.password === 'string' ? body.password : '';
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  if (!email || !password) {
-    return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+  if (!login || !password) {
+    return NextResponse.json({ error: 'Email or Staff ID, and password, are required' }, { status: 400 });
   }
 
   const secure = process.env.NODE_ENV === 'production';
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   if (usingBackend()) {
     let apiRes: Response;
     try {
-      apiRes = await backendCall('/auth/login', { method: 'POST', body: { login: email, password } });
+      apiRes = await backendCall('/auth/login', { method: 'POST', body: { login, password } });
     } catch (err) {
       console.error('Login failed reaching the backend:', API_BASE, err);
       return NextResponse.json({ error: 'Could not reach the server. Please try again.' }, { status: 502 });
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     const data = await apiRes.json().catch(() => ({}));
     if (!apiRes.ok) {
       const status = apiRes.status === 403 ? 403 : 401;
-      return NextResponse.json({ error: backendError(data, 'Incorrect email or password') }, { status });
+      return NextResponse.json({ error: backendError(data, 'Incorrect email / Staff ID or password') }, { status });
     }
 
     const user = data.user as SessionUser;
@@ -57,9 +58,9 @@ export async function POST(request: Request) {
   }
 
   // --- Local mode: the built-in demo user store ---
-  const user = authenticate(email, password);
+  const user = authenticate(login, password);
   if (!user) {
-    return NextResponse.json({ error: 'Incorrect email or password' }, { status: 401 });
+    return NextResponse.json({ error: 'Incorrect email / Staff ID or password' }, { status: 401 });
   }
 
   let token: string;

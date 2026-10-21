@@ -36,7 +36,7 @@ function CredentialsCard({ account, password, onShared, onToast }: {
   onToast: (m: string) => void;
 }) {
   const first = account.name.split(' ')[0];
-  const message = `Hello ${first}, your Manikstu telecalling staff account is ready.\n${account.email ? `Sign-in email: ${account.email}\n` : ''}Staff ID: ${account.staffId}\nTemporary password: ${password}\nYou'll be asked to set your own password the first time you sign in.`;
+  const message = `Hello ${first}, your Manikstu telecalling staff account is ready.\n${account.email ? `Sign-in email: ${account.email}\n` : ''}Staff ID: ${account.staffId}\nTemporary password: ${password}\nSign in with your email or Staff ID. You'll be asked to set your own password the first time you sign in.`;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(message);

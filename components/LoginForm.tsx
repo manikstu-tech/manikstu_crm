@@ -9,8 +9,11 @@ const DEMO_ACCOUNTS = [
   { label: 'Seller', email: 'sanjay@manikstu.in', password: 'seller123' },
 ];
 
+type Method = 'email' | 'staffId';
+
 export default function LoginForm({ showDemoAccounts }: { showDemoAccounts: boolean }) {
-  const [email, setEmail] = useState('');
+  const [method, setMethod] = useState<Method>('email');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +27,7 @@ export default function LoginForm({ showDemoAccounts }: { showDemoAccounts: bool
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ login, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -43,16 +46,31 @@ export default function LoginForm({ showDemoAccounts }: { showDemoAccounts: bool
   return (
     <>
       <form onSubmit={handleSubmit} className="login-form">
+        <div className="login-method" role="group" aria-label="Sign in with">
+          {(['email', 'staffId'] as Method[]).map(m => (
+            <button
+              key={m}
+              type="button"
+              className={`filter-chip ${method === m ? 'active' : ''}`}
+              aria-pressed={method === m}
+              onClick={() => { setMethod(m); setLogin(''); setError(null); }}
+            >
+              {m === 'email' ? 'Email' : 'Staff ID'}
+            </button>
+          ))}
+        </div>
         <div className="form-group">
-          <label htmlFor="email">Email</label>
+          <label htmlFor="login">{method === 'email' ? 'Email' : 'Staff ID'}</label>
           <input
-            id="email"
-            type="email"
+            id="login"
+            type={method === 'email' ? 'email' : 'text'}
             autoComplete="username"
+            autoCapitalize={method === 'email' ? 'off' : 'characters'}
+            spellCheck={false}
             required
-            placeholder="name@manikstu.in"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder={method === 'email' ? 'name@manikstu.in' : 'e.g. MK-TC-120'}
+            value={login}
+            onChange={(e) => setLogin(method === 'staffId' ? e.target.value.toUpperCase() : e.target.value)}
           />
         </div>
         <div className="form-group">
@@ -91,7 +109,7 @@ export default function LoginForm({ showDemoAccounts }: { showDemoAccounts: bool
               key={acc.email}
               type="button"
               className="demo-account"
-              onClick={() => { setEmail(acc.email); setPassword(acc.password); setError(null); }}
+              onClick={() => { setMethod('email'); setLogin(acc.email); setPassword(acc.password); setError(null); }}
             >
               <strong>{acc.label}</strong>
               <span>{acc.email} · {acc.password}</span>
