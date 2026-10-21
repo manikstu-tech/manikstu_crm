@@ -54,8 +54,9 @@ export async function POST(request: Request) {
 
   const name = String(body.name ?? '').replace(/\s+/g, ' ').trim();
   const mobile = String(body.mobile ?? '').replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
-  const email = String(body.email ?? '').trim().toLowerCase() || null;
+  const email = String(body.email ?? '').trim().toLowerCase();
   const region = String(body.region ?? '').trim();
+  // Product lines were removed from the form; every staff member defaults to the first line.
   const verticalIds = Array.isArray(body.verticalIds) ? body.verticalIds.map(Number).filter(n => [1, 2, 3].includes(n)) : [];
   const dailyTarget = Math.round(Number(body.dailyTarget));
   const password = String(body.password ?? '');
@@ -63,13 +64,13 @@ export async function POST(request: Request) {
   const problem =
     name.length < 3 || name.length > 60 ? 'Enter the full name (3–60 characters).'
     : !/^[6-9]\d{9}$/.test(mobile) ? 'Enter a valid 10-digit mobile number.'
-    : email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'Enter a valid email address, or leave it empty.'
+    : !email ? 'Enter the email address — staff sign in with it.'
+    : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'Enter a valid email address.'
     : !region || region.length > 40 ? 'Choose a region.'
-    : verticalIds.length === 0 ? 'Choose at least one product line.'
     : !(dailyTarget >= 5 && dailyTarget <= 200) ? 'Daily call target should be between 5 and 200.'
     : passwordProblem(password) ?? duplicateProblem(mobile, email);
   if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
-  const account = createAccount({ name, mobile, email, region, verticalIds, dailyTarget, password }, head.name);
+  const account = createAccount({ name, mobile, email, region, verticalIds: verticalIds.length ? verticalIds : [1], dailyTarget, password }, head.name);
   return NextResponse.json({ data: account }, { status: 201 });
 }

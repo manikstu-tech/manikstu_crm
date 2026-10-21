@@ -36,7 +36,7 @@ function CredentialsCard({ account, password, onShared, onToast }: {
   onToast: (m: string) => void;
 }) {
   const first = account.name.split(' ')[0];
-  const message = `Hello ${first}, your Manikstu telecalling staff account is ready.\nStaff ID: ${account.staffId}\nTemporary password: ${password}\nYou'll be asked to set your own password the first time you sign in.`;
+  const message = `Hello ${first}, your Manikstu telecalling staff account is ready.\n${account.email ? `Sign-in email: ${account.email}\n` : ''}Staff ID: ${account.staffId}\nTemporary password: ${password}\nYou'll be asked to set your own password the first time you sign in.`;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(message);
@@ -51,6 +51,7 @@ function CredentialsCard({ account, password, onShared, onToast }: {
       <div className="cred-warning">These details are shown <strong>only once</strong>. Share them with {first} now.</div>
       <div className="cred-grid">
         <div><div className="od-label">Name</div><div className="cred-value small">{account.name}</div></div>
+        {account.email && <div><div className="od-label">Sign-in email</div><div className="cred-value small">{account.email}</div></div>}
         <div><div className="od-label">Staff ID</div><div className="cred-value">{account.staffId}</div></div>
         <div><div className="od-label">Temporary password</div><div className="cred-value">{password}</div></div>
       </div>
@@ -115,9 +116,9 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
     const problem =
       form.name.trim().length < 3 ? 'Enter the full name.'
       : !/^[6-9]\d{9}$/.test(mobile) ? 'Enter a valid 10-digit mobile number.'
-      : form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ? 'Enter a valid email, or leave it empty.'
+      : !form.email.trim() ? 'Enter the email address — it is used to sign in.'
+      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ? 'Enter a valid email address.'
       : !region ? 'Choose a region.'
-      : form.verticalIds.length === 0 ? 'Choose at least one product line.'
       : !(Number(form.dailyTarget) >= 5 && Number(form.dailyTarget) <= 200) ? 'Daily call target should be between 5 and 200.'
       : passwordProblem(form.password);
     if (problem) { setFormError(problem); return; }
@@ -316,8 +317,8 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
                 <input type="tel" value={form.mobile} onChange={e => setForm({ ...form, mobile: e.target.value })} placeholder="10-digit mobile" />
               </div>
               <div className="form-group">
-                <label>Email (optional)</label>
-                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="name@manikstu.in" />
+                <label>Email (used to sign in)</label>
+                <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="name@manikstu.in" />
               </div>
             </div>
             <div className="form-row">
@@ -335,20 +336,6 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
               <div className="form-group">
                 <label>Daily call target</label>
                 <input type="number" min={5} max={200} value={form.dailyTarget} onChange={e => setForm({ ...form, dailyTarget: e.target.value })} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Product lines</label>
-              <div className="outcome-picker">
-                {VERTICALS.map(v => {
-                  const on = form.verticalIds.includes(v.id);
-                  return (
-                    <button type="button" key={v.id} className={`filter-chip ${on ? 'active' : ''}`}
-                      onClick={() => setForm({ ...form, verticalIds: on ? form.verticalIds.filter(x => x !== v.id) : [...form.verticalIds, v.id] })}>
-                      {v.name}
-                    </button>
-                  );
-                })}
               </div>
             </div>
             <div className="form-group">
@@ -376,9 +363,8 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
               <tbody>
                 <tr><td>Name</td><td>{form.name.trim()}</td></tr>
                 <tr><td>Mobile</td><td>{form.mobile}</td></tr>
-                <tr><td>Email</td><td>{form.email.trim() || '—'}</td></tr>
+                <tr><td>Email</td><td>{form.email.trim()}</td></tr>
                 <tr><td>Region</td><td>{region}</td></tr>
-                <tr><td>Product lines</td><td>{verticalNames(form.verticalIds)}</td></tr>
                 <tr><td>Daily call target</td><td>{form.dailyTarget}</td></tr>
                 <tr><td>Staff ID</td><td>Created when you confirm</td></tr>
                 <tr><td>Temporary password</td><td>{form.password}</td></tr>
