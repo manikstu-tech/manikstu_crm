@@ -242,6 +242,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
             customer_name: e.name,
             phone: e.phone!,
             source: 'Website',
+            reason: e.message,
           })),
         });
         fresh.forEach((e, i) => links.set(e.id, createdIds[i]));

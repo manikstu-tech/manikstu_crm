@@ -13,6 +13,7 @@ export interface ImportCandidate {
   phone: string | null;
   verticalId: number | null;
   source: string | null;
+  reason: string | null;
   callerId: number | null;
 }
 
@@ -74,12 +75,13 @@ const hasLetters = (s: string) => /[a-z]/i.test(s);
 
 // ---- Rows → candidates --------------------------------------------------------------------
 
-type Field = 'name' | 'phone' | 'product' | 'source' | 'caller';
+type Field = 'name' | 'phone' | 'product' | 'source' | 'reason' | 'caller';
 const HEADER_WORDS: Record<Field, RegExp> = {
   phone: /(phone|mobile|contact\s*(no|number)|number|whatsapp|cell)/i,
   name: /(name|customer|farmer|lead|person)/i,
   product: /(product|vertical|interest|requirement|category|service)/i,
   source: /(source|channel)/i,
+  reason: /(reason|remark|note|comment|purpose|query|issue)/i,
   caller: /(telecaller|assign|caller|staff|agent|owner)/i,
 };
 
@@ -91,7 +93,7 @@ function findHeader(rows: string[][]): { index: number; cols: Partial<Record<Fie
       const text = cell.trim();
       if (!text || text.length > 40 || normalizePhone(text)) return;
       // Order matters: "Contact number" is a phone column, "Customer name" is a name column.
-      for (const f of ['phone', 'caller', 'source', 'product', 'name'] as Field[]) {
+      for (const f of ['phone', 'caller', 'source', 'reason', 'product', 'name'] as Field[]) {
         if (cols[f] === undefined && HEADER_WORDS[f].test(text)) { cols[f] = c; break; }
       }
     });
@@ -102,7 +104,7 @@ function findHeader(rows: string[][]): { index: number; cols: Partial<Record<Fie
 
 /**
  * Turn a grid of cells into lead candidates. Uses the header row when there is one
- * (Name / Phone / Product / Source / Assign to, in any order and wording); otherwise
+ * (Name / Phone / Product / Source / Reason / Assign to, in any order and wording); otherwise
  * reads each line on its own, taking the phone number and the name written before it.
  */
 export function parseLeadRows(rows: string[][]): ImportCandidate[] {
@@ -126,6 +128,7 @@ export function parseLeadRows(rows: string[][]): ImportCandidate[] {
         phone: phoneCell ? normalizePhone(phoneCell) ?? `?${phoneCell}` : null,
         verticalId: detectVertical(get('product')) ?? detectVertical(cells.join(' ')),
         source: detectSource(get('source')),
+        reason: get('reason') || null,
         callerId: detectCaller(get('caller')),
       });
     }
@@ -147,6 +150,7 @@ export function parseLeadRows(rows: string[][]): ImportCandidate[] {
       phone,
       verticalId: detectVertical(text),
       source: detectSource(text),
+      reason: null,
       callerId: detectCaller(text.slice((m.index ?? 0) + m[0].length)),
     });
   }
@@ -271,11 +275,12 @@ export async function downloadLeadTemplate() {
     { header: 'Product', width: 24 },
     { header: 'Source', width: 16 },
     { header: 'Assign to', width: 20 },
+    { header: 'Reason', width: 36 },
   ];
   ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
   ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D5016' } };
-  ws.addRow(['Ramesh Nayak', '9437012345', 'Goat Health Products', 'Village camp', '']);
-  ws.addRow(['Sunita Behera', '9861234567', 'Goat Insurance', 'Referral', TELECALLERS.find(t => t.is_active)?.name ?? '']);
+  ws.addRow(['Ramesh Nayak', '9437012345', 'Goat Health Products', 'Village camp', '', 'Goats not eating, wants a tonic']);
+  ws.addRow(['Sunita Behera', '9861234567', 'Goat Insurance', 'Referral', TELECALLERS.find(t => t.is_active)?.name ?? '', 'Wants to insure 10 goats']);
   const list = (values: string[]) => ({ type: 'list' as const, allowBlank: true, formulae: [`"${values.join(',')}"`] });
   for (let r = 2; r <= 500; r++) {
     ws.getCell(`C${r}`).dataValidation = list(VERTICALS.map(v => v.name));

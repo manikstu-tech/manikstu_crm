@@ -23,6 +23,8 @@ export interface TrackerLead {
   customer_name: string;
   phone: string;
   source: string;
+  /** Why the lead came in: the website enquiry message, or the Reason column of an imported file. */
+  reason?: string | null;
   created_at: string;
   updated_at: string;
 }

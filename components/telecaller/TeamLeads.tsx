@@ -62,7 +62,7 @@ export default function TeamLeads({ data, execSummary, searchQuery, initialCalle
     .filter(l => tabTest(l))
     .filter(l => caller === 'all' || l.assigned_to === caller)
     .filter(l => source === 'all' || l.source === source)
-    .filter(l => !q || [l.customer_name, l.phone].some(v => v.toLowerCase().includes(q)))
+    .filter(l => !q || [l.customer_name, l.phone, l.reason ?? ''].some(v => v.toLowerCase().includes(q)))
     .sort((a, b) => a.updated_at.localeCompare(b.updated_at));
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -246,11 +246,11 @@ export default function TeamLeads({ data, execSummary, searchQuery, initialCalle
             <thead>
               <tr>
                 <th><input type="checkbox" checked={allOnPage} onChange={togglePage} aria-label="Select all on this page" /></th>
-                <th>Lead</th><th>Calling executive</th><th>Stage</th><th>Source</th><th>Last call</th><th>Last touched</th>
+                <th>Lead</th><th>Reason</th><th>Calling executive</th><th>Stage</th><th>Source</th><th>Last call</th><th>Last touched</th>
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && <EmptyRow cols={7} text="No leads match these filters." />}
+              {rows.length === 0 && <EmptyRow cols={8} text="No leads match these filters." />}
               {rows.map(l => {
                 const last = lastCallFor(l.id, data.activities);
                 const owner = callerOf(l.assigned_to);
@@ -259,6 +259,7 @@ export default function TeamLeads({ data, execSummary, searchQuery, initialCalle
                   <tr key={l.id} className={selected.has(l.id) ? 'row-selected' : undefined}>
                     <td><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggle(l.id)} aria-label={`Select ${l.customer_name}`} /></td>
                     <td className="cust">{l.customer_name}<div className="loc">{l.phone} · added {shortDate(l.created_at)}</div></td>
+                    <td>{l.reason ? <div className="lead-reason" title={l.reason}>{l.reason}</div> : <span className="loc">—</span>}</td>
                     <td>
                       {owner?.name ?? '—'}
                       {owner && !owner.is_active && <div><span className="chip muted">Inactive</span></div>}

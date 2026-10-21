@@ -89,6 +89,7 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
       customer_name: row.name,
       phone: row.phone!,
       source: row.source ?? defaultSource,
+      reason: row.reason,
     })));
   };
 
@@ -127,7 +128,7 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
           {error && <div className="inline-alert" style={{ marginTop: 12 }}>{error}</div>}
           <div className="import-help">
             <p>
-              Each row needs a <strong>name</strong> and a <strong>10-digit mobile number</strong>. Product, source and telecaller are optional:
+              Each row needs a <strong>name</strong> and a <strong>10-digit mobile number</strong>. Product, source, reason and telecaller are optional:
               column names can be in any order (e.g. “Farmer name”, “Mobile”, “Interested in”, “Assign to”).
             </p>
             <p>PDFs must contain real text, like a table exported from Excel or this app. Scanned photos of paper lists can’t be read.</p>
@@ -179,7 +180,7 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
           <div className="table-wrap import-table">
             <table>
               <thead>
-                <tr><th>Row</th><th>Name</th><th>Phone</th><th>Product</th><th>Source</th><th>Assign to</th><th>Status</th></tr>
+                <tr><th>Row</th><th>Name</th><th>Phone</th><th>Product</th><th>Source</th><th>Reason</th><th>Assign to</th><th>Status</th></tr>
               </thead>
               <tbody>
                 {planned.map(({ row, callerId }) => (
@@ -189,6 +190,7 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
                     <td>{row.phone ? row.phone.replace(/^\?/, '') : '—'}</td>
                     <td>{row.verticalId ? verticalName(row.verticalId) : <span className="loc">{verticalName(defaultVertical)}</span>}</td>
                     <td>{row.source ?? <span className="loc">{defaultSource}</span>}</td>
+                    <td>{row.reason ? <div className="lead-reason" title={row.reason}>{row.reason}</div> : <span className="loc">—</span>}</td>
                     <td>{row.status === 'ready' ? callerName(callerId) : '—'}</td>
                     <td><span className={`chip ${row.status === 'ready' ? 'delivered' : row.status.startsWith('already') || row.status.startsWith('duplicate') ? 'muted' : 'pending'}`}>{STATUS_LABEL[row.status]}</span></td>
                   </tr>
