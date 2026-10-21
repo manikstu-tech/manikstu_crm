@@ -18,6 +18,8 @@ export async function POST(request: Request) {
   if (!login || !password) {
     return NextResponse.json({ error: 'Email or Staff ID, and password, are required' }, { status: 400 });
   }
+  // Staff IDs are stored in capitals and the backend match is case-sensitive.
+  if (!login.includes('@')) login = login.toUpperCase();
 
   const secure = process.env.NODE_ENV === 'production';
   const cookieBase = { httpOnly: true, sameSite: 'lax' as const, secure, path: '/', maxAge: SESSION_MAX_AGE };
