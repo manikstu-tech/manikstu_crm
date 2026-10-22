@@ -44,7 +44,7 @@ export default function Sidebar({ groups, activePage, onSelectPage }: SidebarPro
   return (
     <aside className={`sidebar ${open ? 'menu-open' : ''}`}>
       <div className="sidebar-brand">
-        <img className="brand-logo" src="/brand/manikstu-logo-horizontal.png" alt="Manikstu" />
+        <img className="brand-logo" src="/brand/manikstu-logo-glossy.png" alt="Manikstu" />
       </div>
 
       {/* Phones only: the current page's name and the button that opens the menu. */}

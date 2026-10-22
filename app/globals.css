@@ -2274,7 +2274,7 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
   scrollbar-color: var(--track) transparent;
 }
 .sidebar-brand { padding: 0 20px 18px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
-/* Horizontal Manikstu logo in deep green, straight on the cream sidebar */
+/* Glossy green Manikstu emblem and wordmark, straight on the cream sidebar */
 .sidebar-brand .brand-logo {
   display: block;
   width: 100%;
