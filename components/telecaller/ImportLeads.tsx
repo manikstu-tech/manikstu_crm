@@ -19,7 +19,8 @@ const IMPORTED_SOURCE = 'Imported file';
 
 interface Props {
   leads: TrackerLead[];
-  onCreate: (leads: NewLead[]) => void;
+  /** Resolves to the server's error message, or null once the leads are saved. */
+  onCreate: (leads: NewLead[]) => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -28,6 +29,8 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [rows, setRows] = useState<CheckedCandidate[] | null>(null);
   const [defaultVertical, setDefaultVertical] = useState<number>(VERTICALS[0].id);
@@ -82,15 +85,18 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
   const problems = planned.filter(p => p.row.status !== 'ready');
   const perCaller = Array.from(ready.reduce((m, p) => m.set(p.callerId!, (m.get(p.callerId!) ?? 0) + 1), new Map<number, number>()));
 
-  const create = () => {
-    onCreate(ready.map(({ row, callerId }) => ({
+  const create = async () => {
+    setSaving(true);
+    setSaveError(null);
+    setSaveError(await onCreate(ready.map(({ row, callerId }) => ({
       vertical_id: row.verticalId ?? defaultVertical,
       assigned_to: callerId!,
       customer_name: row.name,
       phone: row.phone!,
       source: row.source ?? defaultSource,
       reason: row.reason,
-    })));
+    }))));
+    setSaving(false);
   };
 
   const callerName = (id: number | null) => (id === 0 ? 'Unassigned' : TELECALLERS.find(t => t.id === id)?.name ?? '—');
@@ -204,11 +210,13 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
         </>
       )}
 
+      {saveError && <div className="inline-alert" role="alert" style={{ marginTop: 12 }}>{saveError}</div>}
+
       <div className="modal-footer" style={{ marginTop: 16 }}>
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
         {rows && (
-          <button type="button" className="btn-primary" disabled={ready.length === 0} onClick={create}>
-            Create {ready.length} lead{ready.length === 1 ? '' : 's'}
+          <button type="button" className="btn-primary" disabled={ready.length === 0 || saving} onClick={create}>
+            {saving ? 'Creating…' : `Create ${ready.length} lead${ready.length === 1 ? '' : 's'}`}
           </button>
         )}
       </div>

@@ -283,13 +283,14 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
     }
   };
 
-  /** Create leads from an imported Excel / PDF file, in the first stage of their product line. */
-  const handleImport = async (newLeads: NewLead[]) => {
+  /** Create leads from an imported Excel / PDF file, in the first stage of their product line. Returns the error to show, or null. */
+  const handleImport = async (newLeads: NewLead[]): Promise<string | null> => {
     try {
       const { message } = await sync.run({ type: 'import-leads', leads: newLeads });
       showToast(message);
+      return null;
     } catch (e) {
-      showToast(`⚠️ ${(e as Error).message}`);
+      return (e as Error).message;
     }
   };
 

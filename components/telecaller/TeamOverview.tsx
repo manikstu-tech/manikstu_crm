@@ -376,7 +376,7 @@ function StaffDrawer({ stats, data, onClose, onReassign, onOpenLeads }: {
   const others = TELECALLERS.filter(x => x.is_active && x.id !== t.id);
   const [target, setTarget] = useState<number>(others[0]?.id ?? 0);
 
-  const openLeads = data.leads.filter(l => l.assigned_to === t.id && isOpenLead(l)).sort((a, b) => a.updated_at.localeCompare(b.updated_at));
+  const openLeads = data.leads.filter(l => l.assigned_to === t.id && isOpenLead(l)).sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);
   const overdue = data.followups.filter(f => f.caller_id === t.id && isOverdue(f));
   const recentSales = data.sales.filter(s => s.caller_id === t.id).sort((a, b) => b.sold_at.localeCompare(a.sold_at)).slice(0, 5);
   const days = Array.from({ length: 14 }, (_, i) => {

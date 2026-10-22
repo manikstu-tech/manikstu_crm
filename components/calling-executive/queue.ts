@@ -59,7 +59,7 @@ export function buildQueue(leads: TrackerLead[], followups: Followup[], activiti
   const calledIds = new Set(activities.map(a => a.lead_id));
   leads
     .filter(l => isOpenLead(l) && !calledIds.has(l.id))
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id) // newest first
     .forEach(l => add(l, 'New lead'));
 
   leads

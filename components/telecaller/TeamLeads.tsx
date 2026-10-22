@@ -19,7 +19,8 @@ interface Props {
   searchQuery: string;
   initialCaller?: number;
   onReassign: (leadIds: number[], toCallerId: number) => void | Promise<void>;
-  onImport: (leads: NewLead[]) => void;
+  /** Resolves to the error to show in the import window, or null once the leads are saved. */
+  onImport: (leads: NewLead[]) => Promise<string | null>;
   onToast: (message: string) => void;
 }
 
@@ -63,7 +64,7 @@ export default function TeamLeads({ data, execSummary, searchQuery, initialCalle
     .filter(l => caller === 'all' || l.assigned_to === caller)
     .filter(l => source === 'all' || l.source === source)
     .filter(l => !q || [l.customer_name, l.phone, l.reason ?? ''].some(v => v.toLowerCase().includes(q)))
-    .sort((a, b) => a.updated_at.localeCompare(b.updated_at));
+    .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id); // newest first
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
@@ -111,12 +112,14 @@ export default function TeamLeads({ data, execSummary, searchQuery, initialCalle
     setSelected(new Set());
   };
 
-  const createImported = (newLeads: NewLead[]) => {
-    onImport(newLeads);
+  const createImported = async (newLeads: NewLead[]) => {
+    const error = await onImport(newLeads);
+    if (error) return error; // keep the window open so the rows can be fixed
     setImportOpen(false);
     setTab('new-imports');
     setCaller('all');
     reset();
+    return null;
   };
 
   // Every source in use, including "Imported file" and anything else brought in by an import
@@ -275,7 +278,7 @@ export default function TeamLeads({ data, execSummary, searchQuery, initialCalle
           </table>
         </div>
         <div className="pager">
-          <span>{filtered.length === 0 ? '0 leads' : `${safePage * PAGE_SIZE + 1}–${Math.min(filtered.length, (safePage + 1) * PAGE_SIZE)} of ${filtered.length} leads · least recently touched first`}</span>
+          <span>{filtered.length === 0 ? '0 leads' : `${safePage * PAGE_SIZE + 1}–${Math.min(filtered.length, (safePage + 1) * PAGE_SIZE)} of ${filtered.length} leads · newest first`}</span>
           <div className="pager-btns">
             <button className="btn-secondary btn-small" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>Previous</button>
             <button className="btn-secondary btn-small" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)}>Next</button>
