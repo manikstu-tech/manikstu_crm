@@ -5,7 +5,7 @@ import { LOW_STOCK_LEVEL } from '../../data/stockLevels';
 import { TODAY } from '../../data/today';
 import { MONTH, ORDER_CHIP, rupees, rupeesShort, shortDate } from '../../lib/format';
 import HBarList from '../HBarList';
-import { ManualStageAction, ORDER_STATUS_LABEL, SellerOrder, ShipmentDetails, counts, nextManualStep, nextPayoutDate } from './sellerData';
+import { ManualStageAction, ORDER_STATUS_LABEL, SellerOrder, ShipmentDetails, counts, nextManualStep, nextPayoutDate, stockLevels } from './sellerData';
 
 interface Props {
   orders: SellerOrder[];
@@ -46,7 +46,10 @@ export default function SellerOverview({ orders, products, onNavigate, shipmentD
     .filter(r => r.units > 0)
     .sort((a, b) => b.revenue - a.revenue);
 
-  const lowStock = products.filter(p => p.is_active && p.stock_quantity <= LOW_STOCK_LEVEL).sort((a, b) => a.stock_quantity - b.stock_quantity);
+  // Judged on what can still be sold (the shelf minus unshipped orders), as the website does.
+  const lowStock = stockLevels(products.filter(p => p.is_active), orders)
+    .filter(r => r.status !== 'in')
+    .sort((a, b) => a.available - b.available);
 
   return (
     <>
@@ -116,13 +119,13 @@ export default function SellerOverview({ orders, products, onNavigate, shipmentD
             <button className="link link-btn" onClick={() => onNavigate('stock')}>View stock</button>
           </div>
           {lowStock.length === 0 ? (
-            <div className="loc">All active products have more than {LOW_STOCK_LEVEL} units.</div>
+            <div className="loc">All active products have at least {LOW_STOCK_LEVEL} units available.</div>
           ) : (
             <ul className="lead-list">
-              {lowStock.map(p => (
+              {lowStock.map(({ p, available, status }) => (
                 <li key={p.id}>
                   <div><div className="name">{p.name}</div><div className="action">{p.size} · {p.category}</div></div>
-                  <span className={`chip ${p.stock_quantity === 0 ? 'pending' : 'transit'}`}>{p.stock_quantity === 0 ? 'Out of stock' : `${p.stock_quantity} left`}</span>
+                  <span className={`chip ${status === 'out' ? 'pending' : 'transit'}`}>{status === 'out' ? 'Out of stock' : `${available} left`}</span>
                 </li>
               ))}
             </ul>

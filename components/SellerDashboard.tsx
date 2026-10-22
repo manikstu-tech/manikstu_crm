@@ -19,7 +19,7 @@ import type { CatalogProduct } from '../data/catalogProducts';
 import type { OrderStatus, SalesOrder } from '../data/managerDashboard';
 import type { Seller } from '../data/sellers';
 import { nowStamp } from '../lib/format';
-import { ManualStageAction, ORDER_STATUS_LABEL, ShipmentDetails, nextManualStep, sellerOrders, sellerTrackingFor } from './seller/sellerData';
+import { ManualStageAction, ORDER_STATUS_LABEL, ShipmentDetails, nextManualStep, sellerOrders, sellerTrackingFor, stockLevels } from './seller/sellerData';
 import type { SessionUser } from '../lib/session';
 import { isLiveOrder } from './telecaller/orderTracking';
 
@@ -43,6 +43,8 @@ export default function SellerDashboard({ user, seller, initialOrders, initialPr
    * details over the full list rather than filtering the list down to it, so the tabs and counts stay honest. */
   const [trackFocus, setTrackFocus] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // A stock warning shows in the alert colour, not with the usual "done" tick.
+  const [toastWarning, setToastWarning] = useState(false);
 
   // Sample data, kept in this page for now: changes reset on refresh until the backend has sellers.
   const [orders, setOrders] = useState<SalesOrder[]>(initialOrders);
@@ -69,6 +71,11 @@ export default function SellerDashboard({ user, seller, initialOrders, initialPr
   const myProducts = useMemo(() => catalog.filter(p => ownedIds.includes(p.id)), [catalog, ownedIds]);
   const myOrders = useMemo(() => sellerOrders(orders, seller, catalog), [orders, seller, catalog]);
 
+  // Stock as customers see it: what each active product can still sell (the shelf minus unshipped orders), and
+  // whether that is low (under LOW_STOCK_LEVEL) or out. The website uses the same figure.
+  const stock = useMemo(() => stockLevels(myProducts.filter(p => p.is_active), myOrders), [myProducts, myOrders]);
+  const stockAlerts = stock.filter(s => s.status !== 'in').length;
+
   // Notifications: things that need the seller's attention, newest concern first.
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [dismissedNotifs, setDismissedNotifs] = useState<string[]>([]);
@@ -76,23 +83,42 @@ export default function SellerDashboard({ user, seller, initialOrders, initialPr
     const list: { id: string; title: string; message: string; time: string; type: 'warning' | 'success' | 'info' }[] = [];
     const toConfirm = myOrders.filter(o => o.order.status === 'pending');
     const toShip = myOrders.filter(o => o.order.status === 'confirmed' || o.order.status === 'ready_for_dispatch');
-    const outOfStock = myProducts.filter(p => p.is_active && p.stock_quantity === 0);
-    const lowStock = myProducts.filter(p => p.is_active && p.stock_quantity > 0 && p.stock_quantity <= LOW_STOCK_LEVEL);
+    const outOfStock = stock.filter(s => s.status === 'out');
+    const lowStock = stock.filter(s => s.status === 'low').sort((a, b) => a.available - b.available);
     const dueAmount = myOrders.filter(o => o.payout === 'Due').reduce((s, o) => s + o.net, 0);
 
     if (toConfirm.length) list.push({ id: 'confirm', type: 'warning', title: `${toConfirm.length} order${toConfirm.length > 1 ? 's' : ''} to confirm`, message: 'New website orders are waiting for you to confirm them.', time: 'Now' });
     if (toShip.length) list.push({ id: 'ship', type: 'info', title: `${toShip.length} order${toShip.length > 1 ? 's' : ''} to pack & ship`, message: 'Confirmed orders are ready to be packed and dispatched.', time: 'Now' });
-    if (outOfStock.length) list.push({ id: 'oos', type: 'warning', title: `${outOfStock.length} product${outOfStock.length > 1 ? 's' : ''} out of stock`, message: `${outOfStock.map(p => p.name).slice(0, 3).join(', ')}${outOfStock.length > 3 ? '…' : ''} — restock to keep selling.`, time: 'Today' });
-    if (lowStock.length) list.push({ id: 'low', type: 'info', title: `${lowStock.length} product${lowStock.length > 1 ? 's' : ''} low on stock`, message: `Running low: ${lowStock.map(p => p.name).slice(0, 3).join(', ')}${lowStock.length > 3 ? '…' : ''}.`, time: 'Today' });
+    // One alert per product that has run out, so a newly empty product shows up even after an earlier one was dismissed.
+    outOfStock.forEach(({ p }) => list.push({ id: `oos:${p.id}`, type: 'warning', title: `${p.name} is out of stock`, message: 'Customers see it as out of stock on the website and cannot order it. Restock to start selling again.', time: 'Now' }));
+    // Keyed by which products are low, so it comes back when another one joins them.
+    if (lowStock.length) list.push({ id: `low:${lowStock.map(s => s.p.id).join(',')}`, type: 'info', title: `${lowStock.length} product${lowStock.length > 1 ? 's' : ''} low on stock`, message: `Under ${LOW_STOCK_LEVEL} left: ${lowStock.slice(0, 3).map(s => `${s.p.name} (${s.available})`).join(', ')}${lowStock.length > 3 ? '…' : ''}.`, time: 'Today' });
     if (dueAmount > 0) list.push({ id: 'payout', type: 'success', title: 'Payout due', message: `₹${dueAmount.toLocaleString('en-IN')} from delivered orders is due for payout.`, time: 'This week' });
 
     return list.filter(n => !dismissedNotifs.includes(n.id));
-  }, [myOrders, myProducts, dismissedNotifs]);
+  }, [myOrders, stock, dismissedNotifs]);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, warning = false) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setToastWarning(warning);
+    setTimeout(() => setToastMessage(null), warning ? 5000 : 3000);
   };
+
+  // Say so the moment a product runs out or turns low (a new order arrived, an order was packed…), not only in the
+  // drawer. The first render only records the starting levels. A product that is back in stock forgets its dismissed
+  // out-of-stock alert, so running out again alerts again.
+  const lastAvailable = useRef<Map<number, number> | null>(null);
+  useEffect(() => {
+    const prev = lastAvailable.current;
+    lastAvailable.current = new Map(stock.map(s => [s.p.id, s.available]));
+    if (!prev) return;
+    const ranOut = stock.filter(s => s.status === 'out' && (prev.get(s.p.id) ?? 0) > 0);
+    const turnedLow = stock.filter(s => s.status === 'low' && (prev.get(s.p.id) ?? 0) >= LOW_STOCK_LEVEL);
+    const restocked = stock.filter(s => s.status !== 'out' && prev.get(s.p.id) === 0);
+    if (ranOut.length) showToast(`${ranOut.map(s => s.p.name).join(', ')} ${ranOut.length > 1 ? 'are' : 'is'} now out of stock`, true);
+    else if (turnedLow.length) showToast(`Low stock: ${turnedLow.map(s => `${s.p.name} (${s.available} left)`).join(', ')}`, true);
+    if (restocked.length) setDismissedNotifs(prev => prev.filter(id => !restocked.some(s => id === `oos:${s.p.id}`)));
+  }, [stock]);
 
   const advanceOrder = (orderId: number, to: OrderStatus) => {
     const at = nowStamp();
@@ -113,8 +139,21 @@ export default function SellerDashboard({ user, seller, initialOrders, initialPr
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: to }),
         });
+        const body = await res.json().catch(() => ({}));
+        if (res.ok && to === 'shipped' && order) {
+          // Shipping takes the units off the shelf. Use the backend's new figures; the offline demo works them out here.
+          const updates: { id: number; stock_quantity: number }[] | null = Array.isArray(body.data?.stock) ? body.data.stock : null;
+          setCatalog(prev => prev.map(p => {
+            if (updates) {
+              const u = updates.find(x => x.id === p.id);
+              return u ? { ...p, stock_quantity: u.stock_quantity } : p;
+            }
+            if (!body.local) return p;
+            const units = order.items.filter(i => i.product_name === p.name).reduce((n, i) => n + i.quantity, 0);
+            return units ? { ...p, stock_quantity: Math.max(0, p.stock_quantity - units) } : p;
+          }));
+        }
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
           if (previousStatus) {
             setOrders(prev => prev.map(o => (o.id === orderId
               ? { ...o, status: previousStatus, status_history: o.status_history.filter(h => !(h.status === to && h.at === at)) }
@@ -379,7 +418,6 @@ export default function SellerDashboard({ user, seller, initialOrders, initialPr
   // Matches what the Orders page shows: new orders still waiting to be confirmed.
   const toConfirm = myOrders.filter(o => o.order.status === 'pending').length;
   const toShip = myOrders.filter(o => o.order.status === 'confirmed' || o.order.status === 'ready_for_dispatch').length;
-  const lowStock = myProducts.filter(p => p.is_active && p.stock_quantity <= 20).length;
   const due = myOrders.filter(o => o.payout === 'Due').length;
   const lateShipments = useMemo(
     () => myOrders.filter(o => sellerTrackingFor(o.order, shipmentDetails[o.order.id]).delayed).length,
@@ -403,7 +441,7 @@ export default function SellerDashboard({ user, seller, initialOrders, initialPr
       label: 'Sell',
       items: [
         { key: 'orders', label: 'Orders', icon: ShoppingCart, count: toConfirm },
-        { key: 'stock', label: 'Stock', icon: Boxes },
+        { key: 'stock', label: 'Stock', icon: Boxes, count: stockAlerts },
         { key: 'tracking', label: 'Tracking', icon: Truck, count: lateShipments + toShip },
         { key: 'regional', label: 'Regional report', icon: MapPin },
       ],
@@ -425,7 +463,11 @@ export default function SellerDashboard({ user, seller, initialOrders, initialPr
 
   return (
     <div className="card-layout">
-      {toastMessage && <div className="toast">✅ {toastMessage}</div>}
+      {toastMessage && (
+        <div className={`toast ${toastWarning ? 'toast-error' : ''}`} role={toastWarning ? 'alert' : 'status'}>
+          {toastWarning ? '⚠️' : '✅'} {toastMessage}
+        </div>
+      )}
 
       <div className="shell">
         <Sidebar groups={navGroups} activePage={activePage} onSelectPage={handleNavigate} />

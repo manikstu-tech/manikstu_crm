@@ -2,8 +2,33 @@ import type { CatalogProduct } from '../../data/catalogProducts';
 import type { OrderItem, OrderStatus, SalesOrder } from '../../data/managerDashboard';
 import { TODAY } from '../../data/today';
 import type { Seller } from '../../data/sellers';
+import { RESERVING_STATUSES, StockStatus, stockStatusOf } from '../../data/stockLevels';
 import { daysBefore, nowStamp } from '../../lib/format';
 import { TrackEvent, TrackStage, Tracking, isLiveOrder, realNowStamp, trackingFor } from '../telecaller/orderTracking';
+
+/** Units each product has promised to orders that have not shipped yet, by product name (as order lines name them). */
+export function reservedByName(orders: SellerOrder[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const o of orders) {
+    if (!RESERVING_STATUSES.has(o.order.status)) continue;
+    for (const i of o.items) out.set(i.product_name, (out.get(i.product_name) ?? 0) + i.quantity);
+  }
+  return out;
+}
+
+/** What can still be sold: the shelf minus what unshipped orders hold. The figure the website shows customers. */
+export function availableOf(p: CatalogProduct, reserved: Map<string, number>): number {
+  return Math.max(0, p.stock_quantity - (reserved.get(p.name) ?? 0));
+}
+
+/** Each product's available units and low / out status. */
+export function stockLevels(products: CatalogProduct[], orders: SellerOrder[]): { p: CatalogProduct; available: number; status: StockStatus }[] {
+  const reserved = reservedByName(orders);
+  return products.map(p => {
+    const available = availableOf(p, reserved);
+    return { p, available, status: stockStatusOf(available) };
+  });
+}
 
 /** One order as a seller sees it: only their own items, and their share of the money. */
 export interface SellerOrder {

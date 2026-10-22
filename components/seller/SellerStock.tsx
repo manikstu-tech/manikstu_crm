@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pencil, PackagePlus, Plus } from 'lucide-react';
 import type { CatalogProduct } from '../../data/catalogProducts';
-import { LOW_STOCK_LEVEL } from '../../data/stockLevels';
+import { LOW_STOCK_LEVEL, RESERVING_STATUSES, StockStatus, stockStatusOf } from '../../data/stockLevels';
 import { daysBefore, pct, rupees, rupeesShort, shortDate, shortDateTime } from '../../lib/format';
 import { INDIA_STATES, INDIA_UTS, districtFor, stateFor } from '../../lib/regions';
 import { SellerOrder } from './sellerData';
@@ -24,7 +24,7 @@ const regionLabel = (region: Region) =>
 /** Days of sales that a suggested restock should cover. */
 export const COVER_DAYS = 30;
 
-export type StockStatus = 'in' | 'low' | 'out';
+export type { StockStatus };
 const STOCK_LABEL: Record<StockStatus, string> = { in: 'In stock', low: 'Low', out: 'Out of stock' };
 const STOCK_CHIP: Record<StockStatus, string> = { in: 'delivered', low: 'transit', out: 'pending' };
 
@@ -54,7 +54,8 @@ interface StockRow {
   waiting: SellerOrder[];
 }
 
-const UNSHIPPED = new Set(['pending', 'confirmed']);
+// Packed (ready for dispatch) orders are still on the shelf too, as the backend counts them.
+const UNSHIPPED = RESERVING_STATUSES;
 
 function stockRows(products: CatalogProduct[], orders: SellerOrder[]): StockRow[] {
   const live = orders.filter(o => o.order.status !== 'cancelled');
@@ -76,10 +77,10 @@ function stockRows(products: CatalogProduct[], orders: SellerOrder[]): StockRow[
     const daysLeft = perDay > 0 ? Math.floor(available / perDay) : null;
     const short = Math.max(0, reserved - p.stock_quantity);
     const suggested = perDay > 0 ? Math.max(0, Math.ceil(perDay * COVER_DAYS) - available + short) : short;
-    const status: StockStatus =
-      available === 0 ? 'out'
-      : p.stock_quantity <= LOW_STOCK_LEVEL || (daysLeft !== null && daysLeft < 7) ? 'low'
-      : 'in';
+    // Under LOW_STOCK_LEVEL available is low, 0 is out; a product selling fast enough to run out within a week is
+    // low too, however many units it has.
+    const level = stockStatusOf(available);
+    const status: StockStatus = level === 'in' && daysLeft !== null && daysLeft < 7 ? 'low' : level;
     return { p, stock: p.stock_quantity, reserved, available, short, sold30, perDay, daysLeft, suggested, status, waiting };
   });
 }
@@ -189,6 +190,24 @@ export default function SellerStock({ products, orders, movements, searchQuery, 
           <div className="score"><div className="num">{reserved}</div><div className="label">Reserved for unshipped orders</div></div>
           <div className="score"><div className="num">{count('low') + count('out')}{count('out') > 0 && <small className="warn">{count('out')} out</small>}</div><div className="label">Low or out of stock</div></div>
           <div className="score"><div className="num">{count('restock')}</div><div className="label">To restock for {COVER_DAYS} days</div></div>
+        </div>
+      )}
+
+      {(count('out') > 0 || count('low') > 0) && (
+        <div className="alert-strip">
+          <span className="alert-strip-label">Needs action</span>
+          {count('out') > 0 && (
+            <button className={`alert-pill ${tab === 'out' ? 'active' : ''}`} onClick={() => setTab(tab === 'out' ? 'all' : 'out')}
+              title="Customers see these as out of stock on the website and cannot order them until you restock.">
+              Out of stock · not orderable on the website · {count('out')}
+            </button>
+          )}
+          {count('low') > 0 && (
+            <button className={`alert-pill ${tab === 'low' ? 'active' : ''}`} onClick={() => setTab(tab === 'low' ? 'all' : 'low')}
+              title={`Fewer than ${LOW_STOCK_LEVEL} units available, or selling out within a week.`}>
+              Low stock · {count('low')}
+            </button>
+          )}
         </div>
       )}
 

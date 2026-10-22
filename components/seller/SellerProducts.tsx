@@ -1,8 +1,8 @@
 import React from 'react';
 import type { CatalogProduct } from '../../data/catalogProducts';
-import { LOW_STOCK_LEVEL } from '../../data/stockLevels';
+import { LOW_STOCK_LEVEL, stockStatusOf } from '../../data/stockLevels';
 import { daysBefore, rupees } from '../../lib/format';
-import { SellerOrder, counts } from './sellerData';
+import { SellerOrder, availableOf, counts, reservedByName } from './sellerData';
 
 interface Props {
   products: CatalogProduct[];
@@ -18,15 +18,18 @@ export default function SellerProducts({ products, orders, searchQuery, onEdit }
 
   const q = searchQuery.trim().toLowerCase();
   const rows = products.filter(p => !q || [p.name, p.category, p.size].some(v => v.toLowerCase().includes(q)));
-  const out = products.filter(p => p.is_active && p.stock_quantity === 0).length;
-  const low = products.filter(p => p.is_active && p.stock_quantity > 0 && p.stock_quantity <= LOW_STOCK_LEVEL).length;
+  // Low / out is judged on what can still be sold (the shelf minus unshipped orders), as the website does.
+  const reserved = reservedByName(orders);
+  const statusOf = (p: CatalogProduct) => stockStatusOf(availableOf(p, reserved));
+  const out = products.filter(p => p.is_active && statusOf(p) === 'out').length;
+  const low = products.filter(p => p.is_active && statusOf(p) === 'low').length;
 
   return (
     <>
       <div className="scoreboard">
         <div className="score"><div className="num">{products.length}</div><div className="label">Products listed</div></div>
         <div className="score"><div className="num">{products.filter(p => p.is_active).length}</div><div className="label">Active on the website</div></div>
-        <div className="score"><div className="num">{low}</div><div className="label">Low stock (≤ {LOW_STOCK_LEVEL})</div></div>
+        <div className="score"><div className="num">{low}</div><div className="label">Low stock (under {LOW_STOCK_LEVEL})</div></div>
         <div className="score"><div className="num">{out}{out > 0 && <small className="warn">restock</small>}</div><div className="label">Out of stock</div></div>
       </div>
 
@@ -47,8 +50,8 @@ export default function SellerProducts({ products, orders, searchQuery, onEdit }
                   <td className="num-col">{p.price === null ? <span className="loc">Not set</span> : rupees(p.price)}</td>
                   <td className="num-col">
                     {p.stock_quantity}
-                    {p.stock_quantity === 0 ? <div><span className="chip pending">Out of stock</span></div>
-                      : p.stock_quantity <= LOW_STOCK_LEVEL ? <div><span className="chip transit">Low</span></div> : null}
+                    {statusOf(p) === 'out' ? <div><span className="chip pending">Out of stock</span></div>
+                      : statusOf(p) === 'low' ? <div><span className="chip transit">Low</span></div> : null}
                   </td>
                   <td className="num-col">{sold30(p)}</td>
                   <td><span className={`chip ${p.is_active ? 'delivered' : 'muted'}`}>{p.is_active ? 'Active' : 'Hidden'}</span></td>

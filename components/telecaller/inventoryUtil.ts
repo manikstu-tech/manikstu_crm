@@ -67,7 +67,7 @@ export function stockRows(tracked: { o: SalesOrder; t: Tracking }[], complaints:
     const daysLeft = perDay > 0 ? Math.floor(available / perDay) : null;
     const status: StockStatus =
       available === 0 ? 'out'
-      : p.stock_quantity <= LOW_STOCK_LEVEL || (daysLeft !== null && daysLeft < 7) ? 'low'
+      : p.stock_quantity < LOW_STOCK_LEVEL || (daysLeft !== null && daysLeft < 7) ? 'low'
       : 'in';
 
     return {

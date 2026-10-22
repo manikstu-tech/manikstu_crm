@@ -10,7 +10,11 @@ import { OUTCOME_COLORS } from './queue';
 import { fillScript, scriptFor } from './scripts';
 
 /** One orderable product: the price is the catalogue's, the caller only picks the product and a quantity. */
-export interface CatalogItem { id: number; name: string; price: number; size?: string | null }
+/** stock: units that can still be sold (absent in the offline demo). An order beyond it is a back-order the seller sees as waiting for stock. */
+export interface CatalogItem { id: number; name: string; price: number; size?: string | null; stock?: number; stock_status?: 'in' | 'low' | 'out' }
+
+const stockNote = (c: CatalogItem) =>
+  c.stock === undefined ? '' : c.stock_status === 'out' ? ' · out of stock' : c.stock_status === 'low' ? ` · ${c.stock} left` : '';
 
 export interface CallTarget {
   lead: TrackerLead;
@@ -193,8 +197,13 @@ export default function CallModal({ target, me, history, enquiry, catalog, initi
                 <label htmlFor="cm-product">Product</label>
                 <select id="cm-product" value={form.order.productId} onChange={e => orderPatch({ productId: e.target.value === '' ? '' : Number(e.target.value) })}>
                   <option value="">{catalog.length === 0 ? 'Loading products…' : 'Choose the product…'}</option>
-                  {catalog.map(c => <option key={c.id} value={c.id}>{c.name}{c.size ? ` · ${c.size}` : ''} — {rupees(c.price)}</option>)}
+                  {catalog.map(c => <option key={c.id} value={c.id}>{c.name}{c.size ? ` · ${c.size}` : ''} — {rupees(c.price)}{stockNote(c)}</option>)}
                 </select>
+                {chosen && chosen.stock !== undefined && qty > chosen.stock && (
+                  <div className="loc text-warn" style={{ marginTop: 4 }}>
+                    {chosen.stock === 0 ? 'Out of stock' : `Only ${chosen.stock} in stock`}: the seller will see this as waiting for stock.
+                  </div>
+                )}
               </div>
               <div className="form-group">
                 <label htmlFor="cm-qty">Quantity</label>
