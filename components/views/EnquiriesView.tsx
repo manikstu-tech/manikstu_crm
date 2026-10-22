@@ -61,7 +61,7 @@ const ALERTS: Record<Alert, { label: string; test: (e: WebEnquiry) => boolean }>
 const TYPE_ICON: Record<EnquiryType, LucideIcon> = { sales: ShoppingCart, partnership: Handshake, career: Briefcase, general: HelpCircle };
 const ALERT_ICON: Record<Alert, LucideIcon> = { 'new-24h': AlertTriangle, 'sales-2d': ShoppingCart, 'read-no-reply': MailQuestion };
 // Type colours in bar order, checked for colour-blind separation; the legend always names them.
-const TYPE_COLOR: Record<EnquiryType, string> = { sales: '#3A7030', partnership: '#2A78D6', career: '#C4952A', general: '#8A7FD0' };
+const TYPE_COLOR: Record<EnquiryType, string> = { sales: '#174B32', partnership: '#2A78D6', career: '#DCA72B', general: '#8A7FD0' };
 const RANGE_LABEL: Record<DateRange, string> = { '7d': 'Last 7 days', month: 'This month', all: 'All time' };
 
 const hoursBetween = (from: string, to: string) =>

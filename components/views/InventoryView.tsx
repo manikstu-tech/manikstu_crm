@@ -14,7 +14,7 @@ const KIND_LABEL: Record<StockPointKind, string> = { warehouse: 'Warehouse', fra
 const HEALTH: { status: StockStatus; label: string; color: string; filter: StatusFilter }[] = [
   { status: 'Out of stock', label: 'Out of stock', color: '#E86A5A', filter: 'out' },
   { status: 'Low stock', label: 'Low stock', color: '#D9A21F', filter: 'low' },
-  { status: 'OK', label: 'In stock', color: '#2F6A2A', filter: 'all' },
+  { status: 'OK', label: 'In stock', color: '#174B32', filter: 'all' },
 ];
 const DONUT_R = 62;
 const DONUT_C = 2 * Math.PI * DONUT_R;

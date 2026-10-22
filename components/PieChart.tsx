@@ -11,7 +11,7 @@ export interface PieSlice {
 
 // Categorical slots in fixed order (brand leaf, gold, blue, rust, violet, aqua); checked for
 // colour-blind separation with the slices wrapping round the circle. Max 6 slices.
-const SLOTS = ['#3A7030', '#C4952A', '#2A78D6', '#A6532E', '#8A7FD0', '#1BAF7A'];
+const SLOTS = ['#174B32', '#DCA72B', '#78A65A', '#2A78D6', '#A6532E', '#8A7FD0']; // brand Forest, Harvest Gold, Leaf Green first
 const OTHER = '#B9B4A2';
 const R = 80;
 
