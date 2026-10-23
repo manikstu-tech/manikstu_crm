@@ -333,7 +333,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
             />
           )}
           {activePage === 'leads' && (
-            <TeamLeads key={`leads-${focusCaller ?? 'all'}`} data={data} execSummary={workflow} searchQuery={searchQuery} initialCaller={focusCaller} onReassign={handleReassign} onImport={handleImport} onToast={showToast} />
+            <TeamLeads key={`leads-${focusCaller ?? 'all'}`} data={data} execSummary={workflow} trackerState={sync.data} searchQuery={searchQuery} initialCaller={focusCaller} onReassign={handleReassign} onImport={handleImport} onToast={showToast} />
           )}
           {activePage === 'followups' && (
             <TeamFollowups key={`fu-${focusCaller ?? 'all'}`} data={data} searchQuery={searchQuery} initialCaller={focusCaller} onReassign={handleReassign} onToast={showToast} />

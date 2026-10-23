@@ -49,6 +49,28 @@ export function referenceNow(state: Pick<TrackerState, 'leads' | 'activities'>):
   return live ? realNow() : nowStamp();
 }
 
+/** A span of time to count calls in. 'all' is every call ever made. */
+export type ActivityPeriod = 'all' | 'today' | 'week' | 'month';
+export const ACTIVITY_PERIODS: ActivityPeriod[] = ['all', 'today', 'week', 'month'];
+export const ACTIVITY_PERIOD_LABEL: Record<ActivityPeriod, string> = { all: 'All time', today: 'Today', week: 'This week', month: 'This month' };
+
+/**
+ * Whether a timestamp falls in the period, counted up to `now` (see referenceNow): today, this week (weeks run Monday
+ * to Sunday, as on the Sales page) or this calendar month.
+ */
+export function inActivityPeriod(ts: string, period: ActivityPeriod, now: string): boolean {
+  if (period === 'all') return true;
+  const day = ts.slice(0, 10);
+  const today = now.slice(0, 10);
+  if (day > today) return false;
+  if (period === 'today') return day === today;
+  if (period === 'month') return day.slice(0, 7) === today.slice(0, 7);
+  const monday = new Date(`${today}T00:00:00`);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const p = (n: number) => String(n).padStart(2, '0');
+  return day >= `${monday.getFullYear()}-${p(monday.getMonth() + 1)}-${p(monday.getDate())}`;
+}
+
 const hoursBetween = (from: string, to: string) => (new Date(to).getTime() - new Date(from).getTime()) / 3_600_000;
 
 /** Calls grouped by lead, oldest first. */

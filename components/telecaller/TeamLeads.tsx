@@ -8,6 +8,7 @@ import { EmptyRow, StatusChip } from './shared';
 import { TeamData, callerOf, callerName, isOpenLead, isWonLead, lastCallFor, stageName, stageOf } from './tcData';
 import ExecDistributionTable from './ExecDistributionTable';
 import type { WorkflowSummary } from '../../lib/leadWorkflow';
+import type { TrackerState } from '../../lib/trackerOps';
 
 type Tab = 'open' | 'new-imports' | 'untouched' | 'completed' | 'all';
 const PAGE_SIZE = 20;
@@ -16,6 +17,8 @@ interface Props {
   data: TeamData;
   /** Executive-wise distribution and progress, worked out from the shared tracker data. */
   execSummary: WorkflowSummary;
+  /** The tracker data execSummary comes from, so the distribution table can count calls for one period. */
+  trackerState?: TrackerState;
   searchQuery: string;
   initialCaller?: number;
   onReassign: (leadIds: number[], toCallerId: number) => void | Promise<void>;
@@ -25,7 +28,7 @@ interface Props {
 }
 
 /** Import leads and hand them out to the calling executives. */
-export default function TeamLeads({ data, execSummary, searchQuery, initialCaller, onReassign, onImport, onToast }: Props) {
+export default function TeamLeads({ data, execSummary, trackerState, searchQuery, initialCaller, onReassign, onImport, onToast }: Props) {
   const [importOpen, setImportOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('open');
   const [caller, setCaller] = useState<number | 'all'>(initialCaller ?? 'all');
@@ -158,7 +161,7 @@ export default function TeamLeads({ data, execSummary, searchQuery, initialCalle
         </div>
 
         {/* Executive-wise distribution and progress */}
-        <ExecDistributionTable summary={execSummary} onSelectExec={id => { setCaller(caller === id ? 'all' : id); reset(); }} />
+        <ExecDistributionTable summary={execSummary} state={trackerState} onSelectExec={id => { setCaller(caller === id ? 'all' : id); reset(); }} />
       </div>
 
       {/* One filter menu, with the active filters as removable tags */}
