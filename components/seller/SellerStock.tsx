@@ -25,8 +25,8 @@ const regionLabel = (region: Region) =>
 export const COVER_DAYS = 30;
 
 export type { StockStatus };
-const STOCK_LABEL: Record<StockStatus, string> = { in: 'In stock', low: 'Low', out: 'Out of stock' };
-const STOCK_CHIP: Record<StockStatus, string> = { in: 'delivered', low: 'transit', out: 'pending' };
+export const STOCK_LABEL: Record<StockStatus, string> = { in: 'In stock', low: 'Low', out: 'Out of stock' };
+export const STOCK_CHIP: Record<StockStatus, string> = { in: 'delivered', low: 'transit', out: 'pending' };
 
 /** A stock change recorded by the seller on this page. */
 export interface StockMovement {
@@ -37,7 +37,7 @@ export interface StockMovement {
   at: string;
 }
 
-interface StockRow {
+export interface StockRow {
   p: CatalogProduct;
   stock: number;
   /** Units in orders that aren't shipped yet. */
@@ -57,7 +57,7 @@ interface StockRow {
 // Packed (ready for dispatch) orders are still on the shelf too, as the backend counts them.
 const UNSHIPPED = RESERVING_STATUSES;
 
-function stockRows(products: CatalogProduct[], orders: SellerOrder[]): StockRow[] {
+export function stockRows(products: CatalogProduct[], orders: SellerOrder[]): StockRow[] {
   const live = orders.filter(o => o.order.status !== 'cancelled');
   return products.map(p => {
     const lines = live.flatMap(o => o.items.filter(i => i.product_name === p.name).map(i => ({ o, qty: i.quantity })));
@@ -85,14 +85,15 @@ function stockRows(products: CatalogProduct[], orders: SellerOrder[]): StockRow[
   });
 }
 
-type Tab = 'all' | 'restock' | 'low' | 'out';
+export type StockTab = 'all' | 'restock' | 'low' | 'out';
+type Tab = StockTab;
 const TABS: { key: Tab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'restock', label: 'Needs restock' },
   { key: 'low', label: 'Low' },
   { key: 'out', label: 'Out of stock' },
 ];
-const inTab = (r: StockRow, t: Tab) => t === 'all' || (t === 'restock' ? r.p.is_active && r.suggested > 0 : r.status === t);
+export const inStockTab = (r: StockRow, t: Tab) => t === 'all' || (t === 'restock' ? r.p.is_active && r.suggested > 0 : r.status === t);
 
 interface Props {
   products: CatalogProduct[];
@@ -109,7 +110,7 @@ export default function SellerStock({ products, orders, movements, searchQuery, 
   const [tab, setTab] = useState<Tab>('all');
   const [region, setRegion] = useState<Region>('all');
   const rows = useMemo(() => stockRows(products, orders), [products, orders]);
-  const count = (t: Tab) => rows.filter(r => inTab(r, t)).length;
+  const count = (t: Tab) => rows.filter(r => inStockTab(r, t)).length;
 
   // Region dropdown: states and their districts, with order counts
   const regionOptions = useMemo(() => {
@@ -144,7 +145,7 @@ export default function SellerStock({ products, orders, movements, searchQuery, 
 
   const q = searchQuery.trim().toLowerCase();
   const shown = rows
-    .filter(r => inTab(r, tab))
+    .filter(r => inStockTab(r, tab))
     .filter(r => !q || [r.p.name, r.p.category, r.p.size].some(v => v.toLowerCase().includes(q)))
     .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999) || a.available - b.available);
 
