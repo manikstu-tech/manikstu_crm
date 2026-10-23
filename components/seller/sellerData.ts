@@ -4,6 +4,7 @@ import { TODAY } from '../../data/today';
 import type { Seller } from '../../data/sellers';
 import { RESERVING_STATUSES, StockStatus, stockStatusOf } from '../../data/stockLevels';
 import { daysBefore, nowStamp } from '../../lib/format';
+import { addHours } from '../../lib/time';
 import { TrackEvent, TrackStage, Tracking, isLiveOrder, realNowStamp, trackingFor } from '../telecaller/orderTracking';
 
 /** Units each product has promised to orders that have not shipped yet, by product name (as order lines name them). */
@@ -74,20 +75,27 @@ export function nextManualStep(order: SalesOrder, details: ShipmentDetails | und
 
 const historyAt = (o: SalesOrder, s: OrderStatus) => o.status_history.find(h => h.status === s)?.at ?? null;
 
+/** Days a delivery is estimated to take, from shipping (or from the order, before it ships). */
+export const DELIVERY_ESTIMATE_DAYS = 5;
+
 /**
  * Delivery tracking driven entirely by the seller's own actions: placed and confirmed come
  * from real order data, and packed / shipped / out-for-delivery / delivered only appear once
- * the seller has actually clicked that step - never guessed from a timer. Courier, AWB and the
- * expected delivery date are still filled in once shipped (the seller doesn't pick a courier
- * by hand), reusing the same values the simulated trackingFor derives from the real ship date.
+ * the seller has actually clicked that step - never guessed from a timer.
+ *
+ * Courier and tracking number are only ever the ones the seller typed in when confirming: the
+ * backend has no shipment records yet, so nothing else is shown rather than made-up values.
+ * For CRM orders the expected date is an estimate (DELIVERY_ESTIMATE_DAYS after shipping),
+ * not a courier's promise, and is labelled as one.
  */
 export function sellerTrackingFor(o: SalesOrder, details: ShipmentDetails | undefined, nowArg = nowStamp()): Tracking {
-  const now = isLiveOrder(o) ? realNowStamp() : nowArg; // live orders are dated by the real calendar
+  const live = isLiveOrder(o);
+  const now = live ? realNowStamp() : nowArg; // live orders are dated by the real calendar
   const base = trackingFor(o, now);
   if (o.status === 'cancelled' || o.status === 'rejected') return base;
-  // The courier and tracking number the seller typed in when confirming win over the simulated ones.
-  const courier = details?.courier.trim() || base.courier;
-  const awb = details?.trackingNo.trim() || base.awb;
+  // Offline sample orders keep their simulated courier; CRM orders show only what the seller entered.
+  const courier = details?.courier.trim() || (live ? null : base.courier);
+  const awb = details?.trackingNo.trim() || (live ? null : base.awb);
 
   const confirmedAt = historyAt(o, 'confirmed');
   const packedAt = historyAt(o, 'ready_for_dispatch') ?? details?.packedAt ?? null;
@@ -102,7 +110,7 @@ export function sellerTrackingFor(o: SalesOrder, details: ShipmentDetails | unde
   ];
   if (confirmedAt) events.push({ stage: 'confirmed', at: confirmedAt, text: 'Order confirmed by the seller', place: 'Seller' });
   if (packedAt) events.push({ stage: 'packed', at: packedAt, text: `Packed: ${o.items.map(i => `${i.product_name} × ${i.quantity}`).join(', ')}`, place: 'Seller' });
-  if (shippedAt) events.push({ stage: 'shipped', at: shippedAt, text: `Handed to ${courier ?? "the courier"} · tracking ${awb ?? "—"}`, place: 'Seller' });
+  if (shippedAt) events.push({ stage: 'shipped', at: shippedAt, text: `Handed to ${courier ?? 'the courier'}${awb ? ` · tracking ${awb}` : ''}`, place: 'Seller' });
   if (outAt) events.push({ stage: 'out_for_delivery', at: outAt, text: 'Out for delivery', place: o.city });
   if (deliveredAt) {
     events.push({
@@ -113,10 +121,19 @@ export function sellerTrackingFor(o: SalesOrder, details: ShipmentDetails | unde
     });
   }
 
-  const expected_at = stage === 'delivered' ? null : base.expected_at;
+  const estimate = (from: string) => `${addHours(from, DELIVERY_ESTIMATE_DAYS * 24).slice(0, 10)}T18:00`;
+  const expected_at = stage === 'delivered' ? null : live ? estimate(shippedAt ?? o.created_at) : base.expected_at;
   const delayed = (stage === 'shipped' || stage === 'out_for_delivery') && !!expected_at && expected_at < now;
 
-  return { stage, courier, awb, expected_at, expectedIsEstimate: !shippedAt, delayed, events };
+  return { stage, courier, awb, expected_at, expectedIsEstimate: live || !shippedAt, delayed, events };
+}
+
+/** Monday payout date for an order delivered on `deliveredAt`: the first Monday at least `afterDays` later. */
+export function scheduledPayoutDate(deliveredAt: string, afterDays: number): string {
+  const d = new Date(`${deliveredAt.slice(0, 10)}T00:00:00`);
+  d.setDate(d.getDate() + afterDays);
+  d.setDate(d.getDate() + ((8 - d.getDay()) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export type PayoutStatus = 'Paid out' | 'Due' | 'On hold' | 'None';

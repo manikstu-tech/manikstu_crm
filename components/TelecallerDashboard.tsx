@@ -29,6 +29,7 @@ import { trackingFor } from './telecaller/orderTracking';
 import type { SalesOrder } from '../data/managerDashboard';
 import { INITIAL_COMPLAINTS } from '../data/complaints';
 import { useComplaints } from '../lib/useComplaints';
+import { applyOrders } from '../lib/liveMode';
 import { isUnassigned } from './telecaller/complaintsUtil';
 import {
   SALES_ORDERS,
@@ -125,7 +126,10 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
         const res = await fetch('/api/orders', { cache: 'no-store' });
         if (!res.ok) return;
         const body = await res.json();
-        if (!stop && Array.isArray(body.data)) setLiveOrders(body.data as SalesOrder[]);
+        if (!stop && Array.isArray(body.data)) {
+          applyOrders(body.data as SalesOrder[]); // order lookups (complaints, assignment hints) read the shared list
+          setLiveOrders(body.data as SalesOrder[]);
+        }
       } catch { /* try again next tick */ }
     };
     load();
@@ -324,7 +328,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
           {activePage === 'overview' && (
             <TeamOverview
               data={data}
-              orders={SALES_ORDERS}
+              orders={trackOrders}
               enquiries={enquiries}
               onReassign={handleReassign}
               onOpenLeads={callerId => handleNavigate('leads', callerId)}
@@ -346,7 +350,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
           )}
           {activePage === 'sales' && <TeamSales data={data} onToast={showToast} />}
           {activePage === 'marketing' && (
-            <TeamMarketing data={data} orders={SALES_ORDERS} campaigns={campaigns} onCampaignsChange={setCampaigns} onToast={showToast} />
+            <TeamMarketing data={data} orders={trackOrders} campaigns={campaigns} onCampaignsChange={setCampaigns} onToast={showToast} />
           )}
           {activePage === 'exec-reports' && (
             <TelecallingExecutivesView
@@ -358,7 +362,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
             />
           )}
           {activePage === 'onboarding' && <StaffOnboarding onToast={showToast} />}
-          {activePage === 'inventory' && <TeamInventory orders={SALES_ORDERS} complaints={complaints} searchQuery={searchQuery} onToast={showToast} />}
+          {activePage === 'inventory' && <TeamInventory orders={trackOrders} complaints={complaints} searchQuery={searchQuery} onToast={showToast} />}
           {activePage === 'orders' && <TeamOrders orders={trackOrders} complaints={complaints} searchQuery={searchQuery} onToast={showToast} />}
           {activePage === 'order-calls' && <OrderFollowUp searchQuery={searchQuery} onToast={showToast} />}
           {activePage === 'call-reports' && <CallReportsView data={sync.data} canVerify searchQuery={searchQuery} onVerify={verifyReports} />}
@@ -368,14 +372,14 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
               onEnquiriesChange={setEnquiries}
               leads={leads}
               activities={activities}
-              orders={SALES_ORDERS}
+              orders={trackOrders}
               onAssignToCaller={handleAssignEnquiries}
               onImportEnquiries={handleImportEnquiries}
               onToast={showToast}
             />
           )}
           {activePage === 'reports' && (
-            <TeamReports data={data} complaints={complaints} enquiries={enquiries} headName={user.name} onToast={showToast} />
+            <TeamReports data={data} orders={trackOrders} complaints={complaints} enquiries={enquiries} headName={user.name} onToast={showToast} />
           )}
           {activePage === 'complaints' && (
             <TeamComplaints complaints={complaints} onComplaintsChange={setComplaints} createComplaint={complaintsSync.create} headName={user.name} searchQuery={searchQuery} onToast={showToast} />

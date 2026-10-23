@@ -1,0 +1,25 @@
+{
+  "id": "/seller",
+  "name": "Manikstu Seller",
+  "short_name": "Manikstu",
+  "description": "Manage orders, stock, deliveries and payouts for your products on Manikstu.",
+  "start_url": "/seller",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F8F6EE",
+  "theme_color": "#F8F6EE",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "shopping"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "New orders", "short_name": "Orders", "url": "/seller/orders?tab=new", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Low stock", "short_name": "Stock", "url": "/seller/stock?filter=low", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Tracking", "short_name": "Tracking", "url": "/seller/tracking", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}
