@@ -3,13 +3,17 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 
-const DEMO_ACCOUNTS = [
-  { label: 'Telecalling Head', email: 'telecalling@manikstu.com', password: 'telecaller123' },
-  { label: 'Calling executive', email: 'bikash@manikstu.in', password: 'executive123' },
-  { label: 'Seller', email: 'sanjay@manikstu.in', password: 'seller123' },
-];
+export interface DemoAccount {
+  label: string;
+  email: string;
+  password: string;
+}
 
-export default function LoginForm({ showDemoAccounts }: { showDemoAccounts: boolean }) {
+/**
+ * The demo accounts come in as a prop from the login page (a server component), which passes them only in
+ * development. Keeping the list out of this browser component means production JavaScript never contains them.
+ */
+export default function LoginForm({ demoAccounts = [] }: { demoAccounts?: DemoAccount[] }) {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -85,10 +89,10 @@ export default function LoginForm({ showDemoAccounts }: { showDemoAccounts: bool
         </button>
       </form>
 
-      {showDemoAccounts && (
+      {demoAccounts.length > 0 && (
         <div className="demo-accounts">
           <div className="demo-accounts-label">Demo accounts (dev only)</div>
-          {DEMO_ACCOUNTS.map(acc => (
+          {demoAccounts.map(acc => (
             <button
               key={acc.email}
               type="button"

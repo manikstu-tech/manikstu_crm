@@ -1,11 +1,19 @@
 import type { Metadata } from 'next';
-import LoginForm from '../../components/LoginForm';
+import LoginForm, { type DemoAccount } from '../../components/LoginForm';
 import HeaderFrieze from '../../components/HeaderFrieze';
 import FooterFrieze from '../../components/FooterFrieze';
 
 export const metadata: Metadata = {
   title: 'Sign in · Manikstu Samarth',
 };
+
+// Development only. This page is a server component, so the list reaches the browser only when it is passed below;
+// a production build passes nothing, and the passwords are not in its JavaScript.
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  { label: 'Telecalling Head', email: 'telecalling@manikstu.com', password: 'telecaller123' },
+  { label: 'Calling executive', email: 'bikash@manikstu.in', password: 'executive123' },
+  { label: 'Seller', email: 'sanjay@manikstu.in', password: 'seller123' },
+];
 
 export default function LoginPage() {
   return (
@@ -22,7 +30,7 @@ export default function LoginPage() {
           </div>
           <h1>Sign in</h1>
           <p className="login-sub">Use your staff email or Staff ID. You&apos;ll be taken to the dashboard for your role.</p>
-          <LoginForm showDemoAccounts={process.env.NODE_ENV !== 'production'} />
+          <LoginForm demoAccounts={process.env.NODE_ENV !== 'production' ? DEMO_ACCOUNTS : []} />
         </div>
       </main>
       <FooterFrieze />
