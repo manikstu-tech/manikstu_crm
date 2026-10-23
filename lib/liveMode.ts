@@ -1,4 +1,4 @@
-import { SALES_ORDERS, TELECALLERS, TRACKER_PRODUCTS, TRACKER_SALES, WEB_ENQUIRIES, type TrackerSale } from '../data/managerDashboard';
+import { SALES_ORDERS, TELECALLERS, TRACKER_PRODUCTS, TRACKER_SALES, WEB_ENQUIRIES, type SalesOrder, type TrackerSale } from '../data/managerDashboard';
 import { INITIAL_COMPLAINTS } from '../data/complaints';
 import { SAMPLE_CAMPAIGNS } from '../data/marketing';
 import { INITIAL_CUSTOMERS, INITIAL_FPOS, INITIAL_FRANCHISES, INITIAL_TRANSACTIONS } from '../data/initialData';
@@ -30,6 +30,14 @@ export function emptySampleData(): void {
 export function applySales(list: TrackerSale[]): void {
   TRACKER_SALES.splice(0, TRACKER_SALES.length, ...list);
   registerSaleProducts(list);
+}
+
+/**
+ * Put the backend's real orders where the telecalling pages read them (SALES_ORDERS, replaced in place like applySales),
+ * so order lookups (complaint drawer, assignment hints, raising a complaint against an order) find live orders.
+ */
+export function applyOrders(list: SalesOrder[]): void {
+  SALES_ORDERS.splice(0, SALES_ORDERS.length, ...list);
 }
 
 /**
