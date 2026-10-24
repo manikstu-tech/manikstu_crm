@@ -6,8 +6,9 @@ import Modal from '../Modal';
 import { STAGE_CHIP, STAGE_FLOW, STAGE_LABEL, TrackStage, Tracking, stageIndex } from '../telecaller/orderTracking';
 import { ManualStageAction, SellerOrder, ShipmentDetails, nextManualStep, sellerTrackingFor } from './sellerData';
 
-type Tab = 'new' | 'confirmed' | 'active' | 'late' | 'delivered' | 'cancelled' | 'all';
-const TABS: { key: Tab; label: string }[] = [
+export type TrackTab = 'new' | 'confirmed' | 'active' | 'late' | 'delivered' | 'cancelled' | 'all';
+type Tab = TrackTab;
+export const TRACK_TABS: { key: Tab; label: string }[] = [
   { key: 'new', label: 'New · to confirm' },
   { key: 'confirmed', label: 'Ready to ship' },
   { key: 'active', label: 'On the way' },
@@ -24,13 +25,17 @@ const lastAt = (t: Tracking, stage: TrackStage) => t.events.find(e => e.stage ==
 // at 'placed' (i.e. still pending, never even confirmed) - so as new orders arrived or were
 // confirmed, this tab's count and rows shifted for reasons that had nothing to do with
 // shipping, making already-shipped orders look like they'd been bumped off the list.
-const inTab = (o: SellerOrder, t: Tracking, tab: Tab) =>
+export const inTrackTab = (o: SellerOrder, t: Tracking, tab: Tab) =>
   tab === 'all' ? true
     : tab === 'new' ? o.order.status === 'pending'
     : tab === 'confirmed' ? o.order.status === 'confirmed' || o.order.status === 'ready_for_dispatch'
     : tab === 'active' ? o.order.status === 'shipped'
     : tab === 'late' ? t.delayed
     : t.stage === tab;
+
+/** What to say when no courier is recorded for an order. */
+export const courierMissing = (o: SellerOrder) =>
+  o.order.status === 'shipped' || o.order.status === 'delivered' ? 'Courier not recorded' : 'Not shipped yet';
 
 /** Six dots showing how far the order has got. */
 function TrackBar({ t }: { t: Tracking }) {
@@ -81,10 +86,10 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
     !q || [x.o.order.order_number, x.o.order.customer_name, x.o.order.city, x.t.awb ?? '', x.t.courier ?? '']
       .some(v => v.toLowerCase().includes(q));
   // A tab's number is what the table would show under it, search included, so "Ready to ship (9)" never sits above an empty table.
-  const count = (k: Tab) => tracked.filter(x => inTab(x.o, x.t, k) && matchesSearch(x)).length;
+  const count = (k: Tab) => tracked.filter(x => inTrackTab(x.o, x.t, k) && matchesSearch(x)).length;
 
   const rows = tracked
-    .filter(x => inTab(x.o, x.t, tab))
+    .filter(x => inTrackTab(x.o, x.t, tab))
     .filter(matchesSearch)
     // late first, then the soonest expected delivery
     .sort((a, b) => Number(b.t.delayed) - Number(a.t.delayed) || (a.t.expected_at ?? '9').localeCompare(b.t.expected_at ?? '9') || b.o.order.created_at.localeCompare(a.o.order.created_at));
@@ -115,7 +120,7 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
 
       <div className="page-toolbar">
         <div className="filters">
-          {TABS.map(t => (
+          {TRACK_TABS.map(t => (
             <button key={t.key} className={`filter-chip ${tab === t.key ? 'active' : ''}`} onClick={() => { setTab(t.key); setPage(0); }}>
               {t.label} ({count(t.key)})
             </button>
@@ -150,7 +155,7 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
                         {t.expected_at && <span className={`loc ${t.delayed ? 'text-warn' : ''}`}>{t.expectedIsEstimate ? 'est. ' : 'by '}{shortDate(t.expected_at)}</span>}
                       </div>
                     </td>
-                    <td>{t.courier ? <>{t.courier}<div className="loc">{t.awb}</div></> : <span className="loc">{o.order.status === 'pending' ? 'Confirm it on the Orders page' : 'Not shipped yet'}</span>}</td>
+                    <td>{t.courier ? <>{t.courier}<div className="loc">{t.awb}</div></> : <span className="loc">{o.order.status === 'pending' ? 'Confirm it on the Orders page' : courierMissing(o)}</span>}</td>
                     <td className="track-action">
                       <div className="row-actions">
                         {step && (
@@ -225,7 +230,7 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
                 <section className="od-section">
                   <div className="od-label">Delivery tracking</div>
                   <div className="od-row">
-                    <div><div className="loc">Courier</div>{t.courier ?? 'Not shipped yet'}{t.awb && <div className="loc">AWB {t.awb}</div>}</div>
+                    <div><div className="loc">Courier</div>{t.courier ?? courierMissing(o)}{t.awb && <div className="loc">AWB {t.awb}</div>}</div>
                     <div>
                       <div className="loc">{t.stage === 'delivered' ? 'Delivered' : t.expectedIsEstimate ? 'Estimated delivery' : 'Expected delivery'}</div>
                       <span className={t.delayed ? 'text-warn' : undefined}>
