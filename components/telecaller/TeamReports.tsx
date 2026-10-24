@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
-import { SALES_ORDERS, TELECALLERS, TODAY, WebEnquiry } from '../../data/managerDashboard';
+import { SALES_ORDERS, SalesOrder, TELECALLERS, TODAY, WebEnquiry } from '../../data/managerDashboard';
 import { Complaint } from '../../data/complaints';
 import { rupees, shortDate, shortDateTime } from '../../lib/format';
 import { ExportFormat, ExportTable, exportTable, exportWorkbook } from '../../lib/export';
@@ -28,6 +28,8 @@ interface Report {
 
 interface Props {
   data: TeamData;
+  /** Orders to report on: the live ones from the CRM when connected, otherwise the offline sample. */
+  orders?: SalesOrder[];
   complaints: Complaint[];
   enquiries: WebEnquiry[];
   headName: string;
@@ -35,7 +37,7 @@ interface Props {
 }
 
 /** Every telecalling report in one place, each downloadable as Excel or PDF, or all together. */
-export default function TeamReports({ data, complaints, enquiries, headName, onToast }: Props) {
+export default function TeamReports({ data, orders: orderList = SALES_ORDERS, complaints, enquiries, headName, onToast }: Props) {
   const [period, setPeriod] = useState<Period>('month');
   const [caller, setCaller] = useState<number | 'all'>('all');
   const mine = (id: number | null) => caller === 'all' || id === caller;
@@ -45,7 +47,7 @@ export default function TeamReports({ data, complaints, enquiries, headName, onT
 
   const reports: Report[] = useMemo(() => {
     const leadOf = (id: number) => data.leads.find(l => l.id === id);
-    const tracked = SALES_ORDERS.map(o => ({ o, t: trackingFor(o) }));
+    const tracked = orderList.map(o => ({ o, t: trackingFor(o) }));
 
     // ---- Team -------------------------------------------------------------------------
     const perf = allExecMetrics(data, period).filter(m => mine(m.t.id));
@@ -241,7 +243,7 @@ export default function TeamReports({ data, complaints, enquiries, headName, onT
         },
       },
     ];
-  }, [data, complaints, enquiries, period, caller, headName]);
+  }, [data, orderList, complaints, enquiries, period, caller, headName]);
 
   const download = async (r: Report, format: ExportFormat) => {
     if (r.table.rows.length === 0) { onToast(`Nothing in "${r.title}" for these filters`); return; }
