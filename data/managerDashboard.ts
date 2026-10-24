@@ -75,6 +75,8 @@ export interface Followup {
 export interface TrackerSale {
   id: number;
   lead_id: number | null;
+  /** The order this sale was taken as on a call (backend only; null for a sale logged without one). */
+  order_id?: number | null;
   product_id: number;
   caller_id: number;
   customer_name: string;

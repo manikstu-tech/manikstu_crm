@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, IndianRupee, Info, MapPin, Minus, RefreshCw, ShoppingCart, Tractor, UserPlus } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, IndianRupee, Info, MapPin, Minus, PawPrint, RefreshCw, Ruler, ShoppingCart, Trophy, UserPlus } from 'lucide-react';
 import { rupees } from '../../lib/format';
 import { districtFor, stateFor } from '../../lib/regions';
+import Modal from '../Modal';
 
 /**
  * Business Dashboard: five headline figures counted by the backend (/api/reports/dashboard) from the live database.
@@ -27,6 +28,11 @@ interface DashboardData {
   orders: { total: number; completed: number; in_progress: number; cancelled: number; previous_total: number };
   leads: { total: number; new: number; new_previous: number; converted: number; conversion_pct: number | null };
   regions: Location[];
+  /** Summed from the farmers' profiles; kinds come from the data, already normalised ("goat", "buffalo"). */
+  animals: { total: number; farmers: number; by_kind: { kind: string; count: number }[] };
+  /** average is null when no farmer has a readable land size (never 0 for "nothing known"). */
+  land: { unit: string; average: number | null; farmers: number; unreadable: number };
+  top_products: { rank: number; product: string; ordered: number; delivered: number }[];
 }
 
 type Load =
@@ -79,9 +85,9 @@ function Change({ current, previous, period, noun, format = count }: {
 }
 
 /** A KPI card: icon and title, an info tip with the definition, the headline value, compact rows, then the comparison. */
-function Card({ icon: Icon, title, info, value, children, footer, className }: {
+function Card({ icon: Icon, title, info, value, children, body, footer, className }: {
   icon: React.ElementType; title: string; info: string; value: React.ReactNode;
-  children?: React.ReactNode; footer?: React.ReactNode; className?: string;
+  children?: React.ReactNode; body?: React.ReactNode; footer?: React.ReactNode; className?: string;
 }) {
   return (
     <section className={`bd-card ${className ?? ''}`} aria-label={title}>
@@ -92,6 +98,7 @@ function Card({ icon: Icon, title, info, value, children, footer, className }: {
       </div>
       <div className="bd-value">{value}</div>
       {children && <dl className="bd-rows">{children}</dl>}
+      {body}
       {footer && <div className="bd-foot">{footer}</div>}
     </section>
   );
@@ -102,6 +109,18 @@ const Row = ({ label, value, tone }: { label: string; value: React.ReactNode; to
 );
 
 const count = (n: number) => n.toLocaleString('en-IN');
+
+/** A district's orders: all time, and in the selected period. */
+interface DistrictOrders { key: string; district: string; state: string; orders: number; inPeriod: number }
+/** Districts listed on the Total Regions card; the rest are under View all. */
+const REGION_ROWS = 5;
+/** "Puri", or "Raipur, Chhattisgarh" outside Odisha (most orders are in Odisha). */
+const regionName = (r: DistrictOrders) => (r.state === 'Odisha' || r.state === 'Unknown' ? r.district : `${r.district}, ${r.state}`);
+const share = (n: number, of: number) => (of === 0 ? '—' : `${Math.round((n / of) * 100)}%`);
+
+/** "goat" → "Goat"; poultry and sheep read the same for one or many. */
+const animalLabel = (kind: string) => kind.charAt(0).toUpperCase() + kind.slice(1);
+const acres = (n: number) => `${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })} acre${n === 1 ? '' : 's'}`;
 
 export default function BusinessDashboard() {
   const [period, setPeriod] = useState<PeriodKey>('today');
@@ -159,23 +178,36 @@ export default function BusinessDashboard() {
   const retry = () => void fetchDashboard(period, period === 'custom' ? custom : null);
 
   // Regions as the Regional report counts them: districts (from the delivery address) with at least one order.
+  // Orders per district: each delivery address the backend counted is placed in its district (same mapping as the
+  // Regional report), so an order is counted once, in one district. Addresses that can't be placed are kept apart.
   const regions = useMemo(() => {
     if (load.status !== 'ok') return null;
-    const all = new Set<string>();
-    const active = new Set<string>();
-    const states = new Set<string>();
-    let unplaced = 0;
+    const byKey = new Map<string, DistrictOrders>();
+    const unplaced = { orders: 0, inPeriod: 0 };
     for (const l of load.data.regions) {
       const state = stateFor(l.state, l.pincode);
       const district = districtFor(l.state, l.pincode, l.city);
-      if (state === 'Unknown' && district === 'Unknown') { unplaced += l.orders; continue; }
+      if (state === 'Unknown' && district === 'Unknown') { unplaced.orders += l.orders; unplaced.inPeriod += l.orders_in_period; continue; }
       const key = `${state}|${district}`;
-      all.add(key);
-      if (state !== 'Unknown') states.add(state);
-      if (l.orders_in_period > 0) active.add(key);
+      const row = byKey.get(key) ?? { key, district, state, orders: 0, inPeriod: 0 };
+      row.orders += l.orders;
+      row.inPeriod += l.orders_in_period;
+      byKey.set(key, row);
     }
-    return { total: all.size, active: active.size, states: states.size, unplaced };
+    // Most orders in the period first; then most orders overall; then by name, so the order never jumps between loads.
+    const districts = Array.from(byKey.values())
+      .sort((a, b) => b.inPeriod - a.inPeriod || b.orders - a.orders || a.district.localeCompare(b.district));
+    const periodOrders = districts.reduce((n, r) => n + r.inPeriod, 0) + unplaced.inPeriod;
+    return {
+      total: districts.length,
+      active: districts.filter(r => r.inPeriod > 0),
+      districts,
+      states: new Set(districts.map(r => r.state).filter(s => s !== 'Unknown')).size,
+      unplaced,
+      periodOrders,
+    };
   }, [load]);
+  const [allRegionsOpen, setAllRegionsOpen] = useState(false);
 
   const d = load.status === 'ok' ? load.data : null;
 
@@ -223,7 +255,7 @@ export default function BusinessDashboard() {
       {period === 'custom' && !custom && load.status !== 'error' ? null : load.status === 'loading' ? (
         <div className="bd-grid" aria-busy="true" aria-live="polite">
           <span className="bd-sr-only">Loading the dashboard…</span>
-          {Array.from({ length: 5 }, (_, i) => (
+          {Array.from({ length: 7 }, (_, i) => (
             <div key={i} className={`bd-card bd-skeleton ${i === 0 ? 'bd-hero' : ''}`} aria-hidden>
               <span className="bd-sk bd-sk-title" /><span className="bd-sk bd-sk-value" /><span className="bd-sk bd-sk-line" /><span className="bd-sk bd-sk-line bd-short" />
             </div>
@@ -256,22 +288,100 @@ export default function BusinessDashboard() {
             <Row label="Telecalling sales" value={rupees(d.sales.telecalling)} />
           </Card>
 
-          {/* Row 3: farmers and regions. */}
-          <Card icon={Tractor} title="Total Farmers" value={count(d.farmers.total)}
-            info="Everyone in the farmer directory, whatever the period. New: registered in the period. Active: farmers marked Active."
-            footer={<Change current={d.farmers.new} previous={d.farmers.new_previous} period={d.period.key} noun="new farmers" />}>
-            <Row label="New farmers" value={count(d.farmers.new)} />
-            <Row label="Active" value={count(d.farmers.active)} />
+          {/* Row 3: animals and regions. Farmers themselves are in the farmer directory. */}
+          <Card icon={PawPrint} title="Total Animals" value={count(d.animals.total)}
+            info="Animals on the farmers' profiles, added up per kind across every farmer, whatever the period. Kinds are taken from the profiles, so a new kind shows on its own."
+            footer={<span className="loc">{d.animals.farmers ? `From ${count(d.animals.farmers)} farmer${d.animals.farmers === 1 ? '' : 's'} with animals` : 'No animals recorded on farmer profiles yet'}</span>}>
+            {d.animals.by_kind.map(a => <Row key={a.kind} label={animalLabel(a.kind)} value={count(a.count)} />)}
           </Card>
 
           {/* A running total (there is no configured list of regions), so no period comparison. */}
           <Card icon={MapPin} title="Total Regions" value={count(regions.total)}
-            info={`Districts the business has delivered to, from order addresses, as in the Regional report (there is no configured list of regions). With orders in period: districts with at least one order in the selected period. Cancelled orders are left out.${regions.unplaced ? ` ${regions.unplaced} order${regions.unplaced === 1 ? ' has' : 's have'} no usable address.` : ''}`}>
-            <Row label="With orders in period" value={count(regions.active)} />
-            <Row label="States covered" value={count(regions.states)} />
+            info={`Districts the business has delivered to (all time), from order delivery addresses, as in the Regional report; there is no configured list of regions. The list shows how many orders each district placed ${NOW_PHRASE[d.period.key]}, most first. Cancelled orders are left out; orders whose address can't be placed in a district are counted separately.`}
+            body={regions.active.length === 0 && regions.unplaced.inPeriod === 0 ? (
+              <p className="loc bd-empty">No orders {NOW_PHRASE[d.period.key]}.</p>
+            ) : (
+              <table className="bd-top bd-regions">
+                <thead><tr><th scope="col">District</th><th scope="col">Orders</th><th scope="col">Share</th></tr></thead>
+                <tbody>
+                  {regions.active.slice(0, REGION_ROWS).map(r => (
+                    <tr key={r.key}><th scope="row">{regionName(r)}</th><td>{count(r.inPeriod)}</td><td>{share(r.inPeriod, regions.periodOrders)}</td></tr>
+                  ))}
+                  {regions.unplaced.inPeriod > 0 && (
+                    <tr className="bd-muted-row"><th scope="row">Address not placed</th><td>{count(regions.unplaced.inPeriod)}</td><td>{share(regions.unplaced.inPeriod, regions.periodOrders)}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+            footer={
+              <div className="bd-foot-row">
+                <span className="loc">{count(regions.active.length)} of {count(regions.total)} districts ordered {NOW_PHRASE[d.period.key]} · {count(regions.periodOrders)} order{regions.periodOrders === 1 ? '' : 's'}</span>
+                {regions.total > 0 && (
+                  <button type="button" className="link-btn" onClick={() => setAllRegionsOpen(true)}>View all</button>
+                )}
+              </div>
+            } />
+
+          {/* Row 4: land and the best-selling products. */}
+          <Card icon={Ruler} title="Average Land Size" value={d.land.average === null ? '—' : acres(d.land.average)}
+            info={`Mean land per farmer, in acres, over farmers whose profile states a land size (hectares, decimals, cents and gunthas are converted; a plain number is taken as acres). Missing sizes are left out, not counted as zero. Whatever the period.${d.land.unreadable ? ` ${d.land.unreadable} size${d.land.unreadable === 1 ? ' is' : 's are'} in a unit that can't be converted (e.g. bigha) and left out.` : ''}`}
+            footer={<span className="loc">{d.land.farmers ? `Based on ${count(d.land.farmers)} farmer${d.land.farmers === 1 ? '' : 's'}` : 'No farmer has a land size on their profile yet'}</span>}>
+            {d.land.unreadable > 0 && <Row label="Not counted (unknown unit)" value={count(d.land.unreadable)} tone="warn" />}
           </Card>
+
+          <Card icon={Trophy} title="Top 3 Products" value={d.top_products[0]?.product ?? '—'} className="bd-top-card"
+            info="Products with the most units ordered in the period, from order lines (website and phone orders). Cancelled and rejected orders are left out. Delivered: units of those orders already delivered. Ties: more delivered first, then by name."
+            body={d.top_products.length ? (
+              <table className="bd-top">
+                <thead><tr><th scope="col">#</th><th scope="col">Product</th><th scope="col">Ordered</th><th scope="col">Delivered</th></tr></thead>
+                <tbody>
+                  {d.top_products.map(p => (
+                    <tr key={p.product}><td>{p.rank}</td><th scope="row">{p.product}</th><td>{count(p.ordered)}</td><td>{count(p.delivered)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : <p className="loc bd-empty">No products ordered {NOW_PHRASE[d.period.key]}.</p>} />
         </div>
       ) : null}
+
+      {/* Every district, so nothing on the card is left out without a way to see it. */}
+      <Modal isOpen={allRegionsOpen && !!d && !!regions} onClose={() => setAllRegionsOpen(false)} wide
+        title={d ? `Orders by district · ${PERIODS.find(p => p.key === d.period.key)?.label ?? ''}` : 'Orders by district'}>
+        {d && regions && (
+          <div className="business-dashboard bd-regions-all">
+            <p className="loc">
+              {count(regions.total)} districts across {count(regions.states)} state{regions.states === 1 ? '' : 's'}, from order delivery addresses.
+              Orders: placed {NOW_PHRASE[d.period.key]}; All time: every order since the start. Cancelled orders are left out.
+            </p>
+            <div className="table-wrap">
+              <table className="bd-top">
+                <thead><tr><th scope="col">#</th><th scope="col">District</th><th scope="col">State</th><th scope="col">Orders</th><th scope="col">Share</th><th scope="col">All time</th></tr></thead>
+                <tbody>
+                  {regions.districts.map((r, i) => (
+                    <tr key={r.key}>
+                      <td>{i + 1}</td><th scope="row">{r.district}</th><td className="bd-state">{r.state}</td>
+                      <td>{count(r.inPeriod)}</td><td>{share(r.inPeriod, regions.periodOrders)}</td><td>{count(r.orders)}</td>
+                    </tr>
+                  ))}
+                  {(regions.unplaced.orders > 0) && (
+                    <tr className="bd-muted-row">
+                      <td /><th scope="row">Address not placed</th><td className="bd-state">—</td>
+                      <td>{count(regions.unplaced.inPeriod)}</td><td>{share(regions.unplaced.inPeriod, regions.periodOrders)}</td><td>{count(regions.unplaced.orders)}</td>
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td /><th scope="row">Total</th><td />
+                    <td>{count(regions.periodOrders)}</td><td>{regions.periodOrders ? '100%' : '—'}</td>
+                    <td>{count(regions.districts.reduce((n, r) => n + r.orders, 0) + regions.unplaced.orders)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -1,10 +1,16 @@
 import React, { useMemo, useState } from 'react';
+import { CalendarDays, X } from 'lucide-react';
 import { ago } from '../../lib/format';
+import { rangeLabel } from '../../lib/assignedDate';
 import {
   ACTIVITY_PERIODS, ACTIVITY_PERIOD_LABEL, ActivityPeriod, ExecWorkflow, WorkflowSummary,
-  inActivityPeriod, leadFlows, referenceNow, workflowSummary,
+  activityRange, inActivityRange, isLiveTracker, leadFlows, trackerToday, workflowSummary,
 } from '../../lib/leadWorkflow';
 import type { TrackerState } from '../../lib/trackerOps';
+
+/** One of the fixed periods, or a single day picked on the calendar. */
+type Filter = ActivityPeriod | 'custom';
+const DEFAULT_PERIOD: ActivityPeriod = 'all';
 
 interface Props {
   summary: WorkflowSummary;
@@ -23,20 +29,33 @@ const PAGE_SIZE = 3;
  * executives and the manager see), plus a team total. The executive rows are
  * paged (PAGE_SIZE at a time); the Team total is always shown.
  *
- * The period filter (today / this week / this month) narrows every column to the period: calls, outcomes, reports and
- * last call count the calls made in it, and assigned / not called / progress count the leads assigned in it.
+ * The Period dropdown (today / this week / this month) or a day picked on the calendar beside it narrows every column
+ * to those days: calls, outcomes, reports and last call count the calls made in them (the call's time), and assigned /
+ * not called / progress count the leads assigned in them (the assignment time). Days are India days. Only one of the
+ * two applies at a time: picking a day switches the dropdown to "Custom date", picking a period clears the day.
  */
 export default function ExecDistributionTable({ summary, state, onSelectExec }: Props) {
-  const [period, setPeriod] = useState<ActivityPeriod>('all');
+  const [filter, setFilter] = useState<Filter>(DEFAULT_PERIOD);
+  const [day, setDay] = useState('');           // the picked day (YYYY-MM-DD) while filter is 'custom'
+  const [page, setPage] = useState(0);
+  const today = state ? trackerToday(state) : '';
+  const range = filter === 'custom' ? (day ? activityRange({ day }, today) : null) : activityRange(filter, today);
+  const label = filter === 'custom' ? (range ? `on ${rangeLabel(range)}` : '') : ACTIVITY_PERIOD_LABEL[filter].toLowerCase();
+
+  const choosePeriod = (p: ActivityPeriod) => { setFilter(p); setDay(''); setPage(0); };
+  const chooseDay = (d: string) => {
+    if (!d) { choosePeriod(DEFAULT_PERIOD); return; }   // clearing the calendar goes back to the default period
+    setFilter('custom'); setDay(d); setPage(0);
+  };
 
   // The table for one period: calls, outcomes and reports count only the calls made in it; assigned counts the leads
   // handed to each executive in it, with not called and progress for those leads (called at any time since).
   const periodRows = useMemo<ExecWorkflow[] | null>(() => {
-    if (!state || period === 'all') return null;
-    const now = referenceNow(state);
-    const inPeriod = workflowSummary({ ...state, activities: state.activities.filter(a => inActivityPeriod(a.created_at, period, now)) });
+    if (!state || !range) return null;
+    const live = isLiveTracker(state);
+    const inPeriod = workflowSummary({ ...state, activities: state.activities.filter(a => inActivityRange(a.created_at, range, live)) });
     const byId = new Map(inPeriod.execs.map(e => [e.id, e]));
-    const assignedInPeriod = leadFlows(state).filter(f => inActivityPeriod(f.assignedAt, period, now));
+    const assignedInPeriod = leadFlows(state).filter(f => inActivityRange(f.assignedAt, range, live));
     return summary.execs.map(e => {
       const p = byId.get(e.id) ?? e;
       const mine = assignedInPeriod.filter(f => f.lead.assigned_to === e.id);
@@ -46,13 +65,13 @@ export default function ExecDistributionTable({ summary, state, onSelectExec }: 
         progressPct: mine.length === 0 ? 0 : Math.round((called / mine.length) * 100),
       };
     });
-  }, [state, period, summary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- range is derived from these
+  }, [state, filter, day, today, summary]);
 
   // The same executives in every period (those active or holding leads), so rows do not come and go with the filter.
   const listed = new Set(summary.execs.filter(e => e.active || e.assigned > 0).map(e => e.id));
   const execRows = (periodRows ?? summary.execs).filter(e => listed.has(e.id));
   const pageCount = Math.max(1, Math.ceil(execRows.length / PAGE_SIZE));
-  const [page, setPage] = useState(0);
   const safePage = Math.min(page, pageCount - 1);
   const shown = execRows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
   const total = (pick: (e: ExecWorkflow) => number) => execRows.reduce((n, e) => n + pick(e), 0);
@@ -60,24 +79,34 @@ export default function ExecDistributionTable({ summary, state, onSelectExec }: 
   const team = periodRows
     ? { assigned: total(e => e.assigned), notCalled: total(e => e.notCalled), calls: total(e => e.calls), awaiting: total(e => e.awaiting), verified: total(e => e.verified), returned: total(e => e.returned) }
     : { assigned: summary.distributed, notCalled: summary.notCalled, calls: summary.completedCalls, awaiting: summary.awaitingVerification, verified: summary.verified, returned: summary.returned };
-  const noCallsText = period === 'all' ? 'No calls yet' : `No calls ${ACTIVITY_PERIOD_LABEL[period].toLowerCase()}`;
+  const noCallsText = !range ? 'No calls yet' : `No calls ${label}`;
   return (
     <div className="panel">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '10px 14px 4px' }}>
         <div>
           <div id="exec-dist-title" style={{ fontWeight: 600 }}>Executive-wise distribution and progress</div>
-          {period !== 'all' && (
-            <div className="loc">Leads assigned and calls made {ACTIVITY_PERIOD_LABEL[period].toLowerCase()}.</div>
-          )}
+          {range && <div className="loc">Leads assigned and calls made {label} (India time).</div>}
         </div>
         {state && (
-          <div className="filters" role="group" aria-label="Period">
-            {ACTIVITY_PERIODS.map(p => (
-              <button key={p} type="button" className={`filter-chip ${period === p ? 'active' : ''}`} aria-pressed={period === p}
-                onClick={() => { setPeriod(p); setPage(0); }}>
-                {ACTIVITY_PERIOD_LABEL[p]}
-              </button>
-            ))}
+          <div className="ed-filters">
+            <label className="ed-period">
+              <span className="ed-label">Period</span>
+              <select className="filter-select" value={filter} onChange={e => choosePeriod(e.target.value as ActivityPeriod)}>
+                {ACTIVITY_PERIODS.map(p => <option key={p} value={p}>{ACTIVITY_PERIOD_LABEL[p]}</option>)}
+                {/* Shown only while a day is picked, so the dropdown always says what the table shows. */}
+                {filter === 'custom' && range && <option value="custom" disabled>Custom date · {rangeLabel(range)}</option>}
+              </select>
+            </label>
+            <span className={`ed-date ${filter === 'custom' ? 'on' : ''}`}>
+              <CalendarDays size={15} aria-hidden />
+              <input type="date" value={day} max={today} onChange={e => chooseDay(e.target.value)}
+                aria-label="Show one day" title="Show one day's distribution and progress" />
+              {day && (
+                <button type="button" className="ed-clear" onClick={() => chooseDay('')} aria-label="Clear the date">
+                  <X size={13} />
+                </button>
+              )}
+            </span>
           </div>
         )}
       </div>

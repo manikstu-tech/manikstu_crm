@@ -5,7 +5,7 @@ import type { Seller } from '../../data/sellers';
 import { RESERVING_STATUSES, StockStatus, stockStatusOf } from '../../data/stockLevels';
 import { daysBefore, nowStamp } from '../../lib/format';
 import { addHours } from '../../lib/time';
-import { TrackEvent, TrackStage, Tracking, isLiveOrder, realNowStamp, trackingFor } from '../telecaller/orderTracking';
+import { DELIVERY_ESTIMATE_DAYS, TrackEvent, TrackStage, Tracking, isLiveOrder, realNowStamp, trackingFor } from '../telecaller/orderTracking';
 
 /** Units each product has promised to orders that have not shipped yet, by product name (as order lines name them). */
 export function reservedByName(orders: SellerOrder[]): Map<string, number> {
@@ -75,8 +75,8 @@ export function nextManualStep(order: SalesOrder, details: ShipmentDetails | und
 
 const historyAt = (o: SalesOrder, s: OrderStatus) => o.status_history.find(h => h.status === s)?.at ?? null;
 
-/** Days a delivery is estimated to take, from shipping (or from the order, before it ships). */
-export const DELIVERY_ESTIMATE_DAYS = 5;
+// Days a delivery is estimated to take: one figure for the seller's and the head's tracking.
+export { DELIVERY_ESTIMATE_DAYS };
 
 /**
  * Delivery tracking driven entirely by the seller's own actions: placed and confirmed come

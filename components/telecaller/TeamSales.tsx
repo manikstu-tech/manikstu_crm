@@ -6,6 +6,7 @@ import { ExportFormat, exportTable } from '../../lib/export';
 import HBarList from '../HBarList';
 import ExportMenu from '../ExportMenu';
 import { EmptyRow } from './shared';
+import SaleDetails from './SaleDetails';
 import { TeamData, callerName, productName, productOf, salesByMonth } from './tcData';
 
 type Range = 'today' | 'week' | 'month' | 'year';
@@ -33,6 +34,7 @@ export default function TeamSales({ data, onToast }: { data: TeamData; onToast: 
   const [caller, setCaller] = useState<number | 'all'>('all');
   const [verticalId, setVerticalId] = useState<number | 'all'>('all');
   const [page, setPage] = useState(0);
+  const [details, setDetails] = useState<TrackerSale | null>(null);
 
   // With the CRM backend the sales are re-read from it, so a sale recorded while this page is open appears without a
   // reload. Without a backend (offline demo) this stays null and the page uses the sample sales it was given.
@@ -164,9 +166,9 @@ export default function TeamSales({ data, onToast }: { data: TeamData; onToast: 
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Date</th><th>Telecaller</th><th>Customer</th><th>Product</th><th className="num-col">Amount</th></tr></thead>
+            <thead><tr><th>Date</th><th>Telecaller</th><th>Customer</th><th>Product</th><th className="num-col">Amount</th><th aria-label="Details" /></tr></thead>
             <tbody>
-              {rows.length === 0 && <EmptyRow cols={5} text="No sales in this range." />}
+              {rows.length === 0 && <EmptyRow cols={6} text="No sales in this range." />}
               {rows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE).map(s => (
                 <tr key={s.id}>
                   <td>{shortDate(s.sold_at)}</td>
@@ -174,6 +176,10 @@ export default function TeamSales({ data, onToast }: { data: TeamData; onToast: 
                   <td className="cust">{s.customer_name}</td>
                   <td>{productName(s.product_id)} × {s.quantity}</td>
                   <td className="num-col strong">{rupees(s.amount)}</td>
+                  <td className="sd-action">
+                    <button type="button" className="btn-secondary btn-small" onClick={() => setDetails(s)}
+                      aria-label={`View details of the sale to ${s.customer_name}`}>View details</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -187,6 +193,8 @@ export default function TeamSales({ data, onToast }: { data: TeamData; onToast: 
           </div>
         </div>
       </div>
+
+      <SaleDetails sale={details} onClose={() => setDetails(null)} />
     </>
   );
 }

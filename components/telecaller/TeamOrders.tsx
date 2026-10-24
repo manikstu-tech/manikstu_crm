@@ -341,7 +341,7 @@ export default function TeamOrders({ orders, complaints, searchQuery, onToast }:
             <button className="kanban-btn" disabled={safePage >= pages - 1} onClick={() => setPage(safePage + 1)}>Next</button>
           </div>
         )}
-        <div className="panel-note">Packing, courier and AWB details are sample data: the backend stores only the order status so far.</div>
+        <div className="panel-note">Tracking shows the status changes the seller has recorded. Courier and AWB are not recorded yet, and delivery dates are estimates.</div>
       </div>
 
       {opened && (
@@ -427,7 +427,7 @@ function OrderTrackDrawer({ order: o, tracking: t, complaints, focusTracking, on
             <section className="od-section" ref={trackRef}>
               <div className="od-label">Delivery tracking</div>
               <div className="od-row">
-                <div><div className="loc">Courier</div>{t.courier ?? 'Not shipped yet'}{t.awb && <div className="loc">AWB {t.awb}</div>}</div>
+                <div><div className="loc">Courier</div>{t.courier ?? (t.stage === 'shipped' || t.stage === 'delivered' ? 'Courier not recorded' : 'Not shipped yet')}{t.awb && <div className="loc">AWB {t.awb}</div>}</div>
                 <div>
                   <div className="loc">{t.stage === 'delivered' ? 'Delivered' : t.expectedIsEstimate ? 'Estimated delivery' : 'Expected delivery'}</div>
                   <span className={t.delayed ? 'text-warn' : undefined}>

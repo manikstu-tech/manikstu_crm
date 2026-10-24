@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Eye } from 'lucide-react';
 import { TODAY } from '../../data/today';
-import { daysBefore, rupees, shortDate, shortDateTime } from '../../lib/format';
+import { daysBefore, rupees, shortDate } from '../../lib/format';
 import Modal from '../Modal';
 import { STAGE_CHIP, STAGE_FLOW, STAGE_LABEL, TrackStage, Tracking, stageIndex } from '../telecaller/orderTracking';
 import { ManualStageAction, SellerOrder, ShipmentDetails, nextManualStep, sellerTrackingFor } from './sellerData';
+import TrackingTimeline from './TrackingTimeline';
 
 export type TrackTab = 'new' | 'confirmed' | 'active' | 'late' | 'delivered' | 'cancelled' | 'all';
 type Tab = TrackTab;
@@ -186,7 +187,6 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
       <Modal isOpen={!!open} onClose={() => setOpenId(null)} title={open ? `Tracking · ${open.o.order.order_number}` : ''}>
         {open && (() => {
           const { o, t } = open;
-          const reached = stageIndex(t.stage);
           return (
             <>
               <section className="od-section">
@@ -226,42 +226,7 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
                 );
               })()}
 
-              {t.stage !== 'cancelled' && (
-                <section className="od-section">
-                  <div className="od-label">Delivery tracking</div>
-                  <div className="od-row">
-                    <div><div className="loc">Courier</div>{t.courier ?? courierMissing(o)}{t.awb && <div className="loc">AWB {t.awb}</div>}</div>
-                    <div>
-                      <div className="loc">{t.stage === 'delivered' ? 'Delivered' : t.expectedIsEstimate ? 'Estimated delivery' : 'Expected delivery'}</div>
-                      <span className={t.delayed ? 'text-warn' : undefined}>
-                        {t.stage === 'delivered' ? shortDateTime(lastAt(t, 'delivered')!) : t.expected_at ? shortDate(t.expected_at) : '—'}
-                        {t.delayed && ' · late'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="step-track">
-                    {STAGE_FLOW.map((s, i) => (
-                      <div key={s} className={`step ${i < reached ? 'done' : i === reached ? 'now' : ''}`}>
-                        <span className="step-dot" />
-                        <span className="step-name">{STAGE_LABEL[s]}</span>
-                        <span className="step-time">{lastAt(t, s) ? shortDate(lastAt(t, s)!) : ''}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              <section className="od-section">
-                <div className="od-label">Tracking history</div>
-                <ul className="track-timeline">
-                  {[...t.events].reverse().map((e, i) => (
-                    <li key={i}>
-                      <div className="tt-title">{e.text}</div>
-                      <div className="tt-time">{shortDateTime(e.at)} · {e.place}</div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <TrackingTimeline tracking={t} courierMissing={courierMissing(o)} />
               {t.delayed && (
                 <p className="loc text-warn" style={{ marginTop: 10 }}>
                   This delivery is past the courier&apos;s date of {t.expected_at ? shortDate(t.expected_at) : ''} (today is {shortDate(TODAY)}).

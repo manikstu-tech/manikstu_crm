@@ -8,6 +8,7 @@
 import { TELECALLERS, TODAY, CallOutcome, LeadActivity, ReportStatus, TrackerLead } from '../data/managerDashboard';
 import { TrackerState, assignmentOf } from './trackerOps';
 import { nowStamp } from './format';
+import { DayRange, addDays, istDayOf, istToday } from './assignedDate';
 import { isOverdue } from '../components/telecaller/tcData';
 
 /** A lead's place in the workflow, from its latest call report. */
@@ -45,9 +46,12 @@ const realNow = () => {
 
 /** "Now" for ages and "today": the real clock for live data, the demo calendar for the offline sample. */
 export function referenceNow(state: Pick<TrackerState, 'leads' | 'activities'>): string {
-  const live = state.activities.some(a => a.report_status !== undefined) || state.leads.some(l => l.created_at.slice(0, 10) > TODAY);
-  return live ? realNow() : nowStamp();
+  return isLiveTracker(state) ? realNow() : nowStamp();
 }
+
+/** Live data from the CRM backend (rather than the offline sample, which lives on the demo calendar). */
+export const isLiveTracker = (state: Pick<TrackerState, 'leads' | 'activities'>) =>
+  state.activities.some(a => a.report_status !== undefined) || state.leads.some(l => l.created_at.slice(0, 10) > TODAY);
 
 /** A span of time to count calls in. 'all' is every call ever made. */
 export type ActivityPeriod = 'all' | 'today' | 'week' | 'month';
@@ -55,20 +59,32 @@ export const ACTIVITY_PERIODS: ActivityPeriod[] = ['all', 'today', 'week', 'mont
 export const ACTIVITY_PERIOD_LABEL: Record<ActivityPeriod, string> = { all: 'All time', today: 'Today', week: 'This week', month: 'This month' };
 
 /**
- * Whether a timestamp falls in the period, counted up to `now` (see referenceNow): today, this week (weeks run Monday
- * to Sunday, as on the Sales page) or this calendar month.
+ * The calendar days (inclusive, YYYY-MM-DD) a period covers, up to `today`: today, this week (weeks run Monday to
+ * Sunday, as on the Sales page), this calendar month, or one chosen day. Null for all time.
  */
-export function inActivityPeriod(ts: string, period: ActivityPeriod, now: string): boolean {
-  if (period === 'all') return true;
-  const day = ts.slice(0, 10);
-  const today = now.slice(0, 10);
-  if (day > today) return false;
-  if (period === 'today') return day === today;
-  if (period === 'month') return day.slice(0, 7) === today.slice(0, 7);
-  const monday = new Date(`${today}T00:00:00`);
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  const p = (n: number) => String(n).padStart(2, '0');
-  return day >= `${monday.getFullYear()}-${p(monday.getMonth() + 1)}-${p(monday.getDate())}`;
+export function activityRange(period: ActivityPeriod | { day: string }, today: string): DayRange | null {
+  if (typeof period === 'object') return { from: period.day, to: period.day };
+  if (period === 'today') return { from: today, to: today };
+  if (period === 'month') return { from: `${today.slice(0, 7)}-01`, to: today };
+  if (period === 'week') return { from: addDays(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7)), to: today };
+  return null;
+}
+
+/**
+ * The day a tracker stamp belongs to. The backend writes stamps in UTC without a zone, so live stamps are placed on the
+ * India calendar (a call at 01:00 IST is that day's call, not the UTC day before); the offline sample's stamps are
+ * already on the demo calendar.
+ */
+export const trackerDay = (ts: string, live: boolean) => (live ? istDayOf(ts) : ts.slice(0, 10));
+
+/** "Today" for the periods: India's today for live data, the demo calendar's for the sample. */
+export const trackerToday = (state: Pick<TrackerState, 'leads' | 'activities'>) =>
+  isLiveTracker(state) ? istToday() : referenceNow(state).slice(0, 10);
+
+export function inActivityRange(ts: string, range: DayRange | null, live: boolean): boolean {
+  if (!range) return true;
+  const day = trackerDay(ts, live);
+  return day !== null && day >= range.from && day <= range.to;
 }
 
 const hoursBetween = (from: string, to: string) => (new Date(to).getTime() - new Date(from).getTime()) / 3_600_000;

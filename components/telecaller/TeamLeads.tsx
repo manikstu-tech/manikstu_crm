@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LEAD_SOURCES, TELECALLERS, TODAY } from '../../data/managerDashboard';
-import { ChevronDown, FileSpreadsheet, Shuffle, SlidersHorizontal, Upload, UserCheck, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, FileSpreadsheet, Shuffle, SlidersHorizontal, Upload, UserCheck, X } from 'lucide-react';
 import { ago, daysBefore, shortDate } from '../../lib/format';
 import Modal from '../Modal';
 import ImportLeads, { NewLead } from './ImportLeads';
@@ -8,7 +8,8 @@ import { EmptyRow, StatusChip } from './shared';
 import { TeamData, callerOf, callerName, isOpenLead, isWonLead, lastCallFor, stageName, stageOf } from './tcData';
 import ExecDistributionTable from './ExecDistributionTable';
 import type { WorkflowSummary } from '../../lib/leadWorkflow';
-import type { TrackerState } from '../../lib/trackerOps';
+import { assignmentOf, type TrackerState } from '../../lib/trackerOps';
+import { ASSIGNED_DATE_OPTIONS, AssignedDateKey, DayRange, assignedRange, customRangeError, inDayRange, istToday, rangeLabel } from '../../lib/assignedDate';
 
 type Tab = 'open' | 'new-imports' | 'untouched' | 'completed' | 'all';
 const PAGE_SIZE = 20;
@@ -38,6 +39,10 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
   const [target, setTarget] = useState<number>(TELECALLERS.find(t => t.is_active)?.id ?? 0);
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // The "Assigned" date filter: separate from the Filters menu, so resetting either leaves the other alone.
+  const [dateKey, setDateKey] = useState<AssignedDateKey>('any');
+  const [customRange, setCustomRange] = useState<DayRange | null>(null);
+  const [draft, setDraft] = useState<Partial<DayRange>>({});
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close the filter menu on an outside click or Escape
@@ -61,8 +66,22 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
   ];
   const tabTest = TABS.find(t => t.key === tab)!.test;
 
+  // Leads assigned in the chosen India-day range (see lib/assignedDate). Everything below, the menu's counts included,
+  // works on these, so both filters always apply together.
+  const today = istToday();
+  const range = assignedRange(dateKey, customRange, today);
+  const assignedAt = (l: typeof data.leads[number]) => assignmentOf(trackerState ?? {}, l).at;
+  const dated = range ? data.leads.filter(l => inDayRange(assignedAt(l), range)) : data.leads;
+  const draftError = dateKey === 'custom' ? customRangeError(draft, today) : null;
+  const chooseDate = (key: AssignedDateKey) => {
+    setDateKey(key);
+    if (key === 'custom') setDraft(customRange ?? { from: today, to: today });
+    reset();
+  };
+  const clearDate = () => { setDateKey('any'); setCustomRange(null); reset(); };
+
   const q = searchQuery.trim().toLowerCase();
-  const filtered = data.leads
+  const filtered = dated
     .filter(l => tabTest(l))
     .filter(l => caller === 'all' || l.assigned_to === caller)
     .filter(l => source === 'all' || l.source === source)
@@ -128,6 +147,7 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
   // Every source in use, including "Imported file" and anything else brought in by an import
   const sources = Array.from(new Set([...LEAD_SOURCES, ...data.leads.map(l => l.source)]));
   const count = (test: (l: typeof data.leads[number]) => boolean) => data.leads.filter(test).length;
+  const countDated = (test: (l: typeof data.leads[number]) => boolean) => dated.filter(test).length;
   const importedToday = count(l => l.created_at.startsWith(TODAY) && l.source === 'Imported file');
 
   // Active filters, shown as removable tags
@@ -181,7 +201,7 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
                   <button key={t.key} className={`lf-option ${tab === t.key ? 'on' : ''}`} onClick={() => { setTab(t.key); reset(); }}>
                     <span className="lf-radio" />
                     <span className="lf-opt-text">{t.label}<small>{t.hint}</small></span>
-                    <span className="lf-n">{count(t.test)}</span>
+                    <span className="lf-n">{countDated(t.test)}</span>
                   </button>
                 ))}
               </div>
@@ -214,6 +234,33 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
                 <button className="btn-primary btn-small" onClick={() => setMenuOpen(false)}>Show {filtered.length} leads</button>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Assigned date: its own control beside Filters. */}
+        <div className="lf-date">
+          <label className="lf-date-pick">
+            <CalendarDays size={15} aria-hidden />
+            <select className="filter-select" value={dateKey} onChange={e => chooseDate(e.target.value as AssignedDateKey)}
+              aria-label="Filter by the date the lead was assigned" title="Date the lead was assigned to its executive (India time)">
+              {ASSIGNED_DATE_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.key === 'any' ? 'Assigned: any date' : `Assigned: ${o.label.toLowerCase()}`}</option>)}
+            </select>
+          </label>
+          {dateKey === 'custom' && (
+            <form className="lf-date-range" onSubmit={e => { e.preventDefault(); if (!draftError) { setCustomRange(draft as DayRange); reset(); } }}>
+              <input type="date" value={draft.from ?? ''} max={today} onChange={e => setDraft(d => ({ ...d, from: e.target.value }))} aria-label="Assigned from" required />
+              <span className="loc">to</span>
+              <input type="date" value={draft.to ?? ''} max={today} onChange={e => setDraft(d => ({ ...d, to: e.target.value }))} aria-label="Assigned to" required />
+              <button type="submit" className="btn-primary btn-small" disabled={!!draftError}>Apply</button>
+              {draftError ? <span className="text-warn" role="alert">{draftError}</span>
+                : !customRange && <span className="loc">Press Apply to filter.</span>}
+            </form>
+          )}
+          {range && (
+            <span className="lf-tag">
+              <span className="lf-tag-k">Assigned</span> {dateKey === 'custom' ? rangeLabel(range) : ASSIGNED_DATE_OPTIONS.find(o => o.key === dateKey)!.label}
+              <button onClick={clearDate} aria-label="Remove assigned date filter"><X size={12} /></button>
+            </span>
           )}
         </div>
 
@@ -256,7 +303,7 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && <EmptyRow cols={8} text="No leads match these filters." />}
+              {rows.length === 0 && <EmptyRow cols={8} text={range ? 'No leads were assigned in this period with these filters.' : 'No leads match these filters.'} />}
               {rows.map(l => {
                 const last = lastCallFor(l.id, data.activities);
                 const owner = callerOf(l.assigned_to);

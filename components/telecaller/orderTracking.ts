@@ -2,9 +2,10 @@ import type { SalesOrder, OrderStatus } from '../../data/managerDashboard';
 import { addHours } from '../../lib/time';
 import { nowStamp, shortDate } from '../../lib/format';
 
-// Shipment tracking for the head's Orders page. The backend only stores the order status
-// (pending / confirmed / shipped / delivered / cancelled); packing, courier, AWB and hub scans
-// are sample details worked out from each order's status history until a shipments table exists.
+// Shipment tracking for the head's Orders page. The backend stores the order's status changes
+// (placed / confirmed / packed / shipped / delivered / cancelled) and nothing about the courier.
+// A real (CRM) order shows only those recorded changes: no courier, AWB, hub scans or
+// out-for-delivery are made up for it. The offline sample orders keep simulated courier details.
 
 export type TrackStage = 'placed' | 'confirmed' | 'packed' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled';
 
@@ -101,11 +102,11 @@ export function trackingFor(o: SalesOrder, nowArg = nowStamp()): Tracking {
   const confirmedAt = historyAt(o, 'confirmed');
   const shippedAt = historyAt(o, 'shipped');
   const deliveredAt = historyAt(o, 'delivered');
+  if (live) return recordedTracking(o, now, { confirmedAt, shippedAt, deliveredAt });
   if (confirmedAt) add('confirmed', confirmedAt, 'Order confirmed with the customer', WAREHOUSE);
 
   let packedAt: string | null = null;
-  if (live) packedAt = historyAt(o, 'ready_for_dispatch'); // a real order is packed when the seller says so, not by a dice roll
-  else if (shippedAt) packedAt = addHours(shippedAt, -(3 + Math.round(r() * 7)));
+  if (shippedAt) packedAt = addHours(shippedAt, -(3 + Math.round(r() * 7)));
   else if (confirmedAt && r() < 0.6) {
     const at = addHours(confirmedAt, 6 + Math.round(r() * 4));
     if (at <= now) packedAt = at;
@@ -147,6 +148,42 @@ export function trackingFor(o: SalesOrder, nowArg = nowStamp()): Tracking {
   };
 }
 
+/** Days a delivery is estimated to take, from shipping (or from the order, before it ships). */
+export const DELIVERY_ESTIMATE_DAYS = 5;
+
+/**
+ * Tracking for a real order: only what the backend recorded (its status history), with the seller's wording, so the
+ * head's Orders page and the seller's Tracking page tell the same story. There is no courier record, so courier and
+ * AWB are null and the delivery date is an estimate (DELIVERY_ESTIMATE_DAYS from shipping, or from the order).
+ */
+function recordedTracking(o: SalesOrder, now: string, at: { confirmedAt: string | null; shippedAt: string | null; deliveredAt: string | null }): Tracking {
+  const { confirmedAt, shippedAt, deliveredAt } = at;
+  const packedAt = historyAt(o, 'ready_for_dispatch');
+  const events: TrackEvent[] = [
+    { stage: 'placed', at: o.created_at, text: o.source === 'website' ? 'Order placed on the website' : 'Order taken on a call', place: o.source === 'website' ? 'Website' : 'Telecalling team' },
+  ];
+  if (confirmedAt) events.push({ stage: 'confirmed', at: confirmedAt, text: 'Order confirmed by the seller', place: 'Seller' });
+  if (packedAt) events.push({ stage: 'packed', at: packedAt, text: `Packed: ${o.items.map(i => `${i.product_name} × ${i.quantity}`).join(', ')}`, place: 'Seller' });
+  if (shippedAt) events.push({ stage: 'shipped', at: shippedAt, text: 'Handed to the courier', place: 'Seller' });
+  if (deliveredAt) {
+    events.push({
+      stage: 'delivered',
+      at: deliveredAt,
+      text: `Delivered to ${o.customer_name}${o.payment_method === 'COD' ? (o.payment_status === 'paid' ? ' · cash collected' : ' · cash not collected yet') : ''}`,
+      place: o.city,
+    });
+  }
+  events.sort((a, b) => a.at.localeCompare(b.at));
+
+  const stage: TrackStage = deliveredAt ? 'delivered' : shippedAt ? 'shipped' : packedAt ? 'packed' : confirmedAt ? 'confirmed' : 'placed';
+  const expected_at = stage === 'delivered' ? null : `${addHours(shippedAt ?? o.created_at, DELIVERY_ESTIMATE_DAYS * 24).slice(0, 10)}T18:00`;
+  return {
+    stage, courier: null, awb: null, expected_at, expectedIsEstimate: true,
+    delayed: stage === 'shipped' && !!expected_at && expected_at < now,
+    events,
+  };
+}
+
 /** Index of the stage in the normal flow (cancelled = -1). */
 export const stageIndex = (s: TrackStage) => STAGE_FLOW.indexOf(s);
 
@@ -160,6 +197,6 @@ export function customerUpdate(o: SalesOrder, t: Tracking): string {
     case 'placed': return `${head} is received and will be confirmed shortly.`;
     case 'confirmed': return `${head} is confirmed and being packed. Expected by ${shortDate(t.expected_at!)}.`;
     case 'packed': return `${head} is packed and will be handed to the courier soon. Expected by ${shortDate(t.expected_at!)}.`;
-    default: return `${head} is ${t.stage === 'out_for_delivery' ? 'out for delivery today' : 'on the way'} with ${t.courier}, tracking number ${t.awb}.${t.stage === 'shipped' ? ` Expected by ${shortDate(t.expected_at!)}.` : ''}${o.payment_method === 'COD' && o.payment_status !== 'paid' ? ` Please keep ₹${o.total} ready (cash on delivery).` : ''}`;
+    default: return `${head} is ${t.stage === 'out_for_delivery' ? 'out for delivery today' : 'on the way'}${t.courier ? ` with ${t.courier}` : ''}${t.awb ? `, tracking number ${t.awb}` : ''}.${t.stage === 'shipped' ? ` Expected by ${shortDate(t.expected_at!)}.` : ''}${o.payment_method === 'COD' && o.payment_status !== 'paid' ? ` Please keep ₹${o.total} ready (cash on delivery).` : ''}`;
   }
 }
