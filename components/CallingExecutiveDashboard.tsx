@@ -97,22 +97,30 @@ export default function CallingExecutiveDashboard({ user, tracker }: { user: Ses
   useEffect(() => { void loadCatalog(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Records a call (activity, lead stage, follow-ups) on the server. */
+  /** Saves the call (and its order). Resolves to null once saved, or to the reason it was not, so nothing typed is lost. */
   const logCall = async (
     { lead, followup }: CallTarget,
     outcome: CallOutcome,
     form: CallForm,
     durationSec: number | null,
-  ) => {
+  ): Promise<string | null> => {
+    const lines = form.order.items.filter(l => l.productId !== '');
     const call: CallInput = {
       leadId: lead.id,
       outcome,
       stageId: form.stageId,
       note: form.note,
       customerResponse: form.customerResponse || null,
-      // The customer ordered on this call: send what, how many and where, so it becomes an order for the seller.
-      order: outcome === 'Connected' && form.customerResponse === 'Placed order' && form.order.productId !== ''
+      // The customer ordered on this call: send what, how many and where, so it becomes one order for the seller. Each
+      // line carries the price the caller saw; the server prices the order itself and refuses it if that has changed.
+      order: outcome === 'Connected' && form.customerResponse === 'Placed order' && lines.length > 0
         ? {
-            productId: Number(form.order.productId), quantity: Math.floor(Number(form.order.quantity) || 0), address: form.order.address.trim(),
+            items: lines.map(l => ({
+              productId: Number(l.productId),
+              quantity: Math.floor(Number(l.quantity) || 0),
+              price: catalog.find(c => c.id === l.productId)?.price,
+            })),
+            address: form.order.address.trim(),
             city: form.order.city.trim(), state: form.order.state.trim(), pincode: form.order.pincode.trim(), paymentMethod: form.order.paymentMethod,
           }
         : null,
@@ -128,9 +136,12 @@ export default function CallingExecutiveDashboard({ user, tracker }: { user: Ses
       showToast(call.order && message.includes('order')
         ? message
         : `${lead.customer_name}: ${outcome}${stageChanged ? ` · moved to ${stageOf(form.stageId)?.name}` : ''}${form.scheduleNext ? ' · callback booked' : ''}`);
+      return null;
     } catch (e) {
       setHandled(prev => prev.filter(id => id !== lead.id)); // not saved: keep it in the queue
-      showToast(`⚠️ ${(e as Error).message}`);
+      // A price or product may have changed since the window opened: reload the catalogue so the window shows it now.
+      if (call.order) void loadCatalog();
+      return (e as Error).message || 'Could not save the call. Please try again.';
     }
   };
 
@@ -285,9 +296,11 @@ export default function CallingExecutiveDashboard({ user, tracker }: { user: Ses
           enquiry={myEnquiries.find(e => e.lead_id === callTarget.lead.id)}
           catalog={catalog}
           initialForm={emptyForm(callTarget.lead.stage_id, callTarget.followup?.note ?? '')}
-          onSave={(outcome, callForm, durationSec) => {
-            logCall(callTarget, outcome, callForm, durationSec);
-            setCallTarget(null);
+          onSave={async (outcome, callForm, durationSec) => {
+            // The window closes only once the call (and any order) is saved; otherwise it stays open with the error.
+            const error = await logCall(callTarget, outcome, callForm, durationSec);
+            if (!error) setCallTarget(null);
+            return error;
           }}
           onClose={() => setCallTarget(null)}
         />

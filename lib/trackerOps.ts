@@ -76,10 +76,13 @@ export interface CallInput {
   customerResponse?: CustomerResponse | null;
 }
 
-/** What a phone order carries: a catalogue product (priced by the server), how many, and where to deliver. */
+/**
+ * What a phone order carries: one or more catalogue products with quantities, and where to deliver. The server prices
+ * every line from the catalogue; `price` is what the caller was shown, so the server can refuse the order if the
+ * catalogue has changed since.
+ */
 export interface CallOrderInput {
-  productId: number;
-  quantity: number;
+  items: { productId: number; quantity: number; price?: number }[];
   address: string;
   city: string;
   state: string;

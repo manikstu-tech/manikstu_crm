@@ -5,10 +5,16 @@ import { dayStart, pct, shortDateTime } from '../../lib/format';
 import { fmtDuration, stageName, time12, verticalName } from '../telecaller/tcData';
 import { QUEUE_CHIP, QueueItem } from './queue';
 
-/** The order details typed in while the customer is still on the phone (text fields, checked before saving). */
-export interface OrderForm {
+/** One product on a phone order. `key` keeps each row's own state when other rows are added or removed. */
+export interface OrderLine {
+  key: number;
   productId: number | '';
   quantity: string;
+}
+
+/** The order details typed in while the customer is still on the phone (text fields, checked before saving). */
+export interface OrderForm {
+  items: OrderLine[];
   address: string;
   city: string;
   state: string;
@@ -16,7 +22,10 @@ export interface OrderForm {
   paymentMethod: 'COD' | 'UPI';
 }
 
-export const emptyOrderForm = (): OrderForm => ({ productId: '', quantity: '1', address: '', city: '', state: 'Odisha', pincode: '', paymentMethod: 'COD' });
+let nextLineKey = 1;
+export const emptyOrderLine = (): OrderLine => ({ key: nextLineKey++, productId: '', quantity: '1' });
+
+export const emptyOrderForm = (): OrderForm => ({ items: [emptyOrderLine()], address: '', city: '', state: 'Odisha', pincode: '', paymentMethod: 'COD' });
 
 export interface CallForm {
   note: string;
