@@ -2,13 +2,14 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart3, CalendarClock, ClipboardCheck, Inbox, PhoneCall, LayoutDashboard, MapPin, Megaphone, MessageSquareWarning, Package, TrendingUp, Truck, UserCheck, UserPlus, Users,
+  BarChart3, CalendarClock, ClipboardCheck, Gauge, Inbox, PhoneCall, LayoutDashboard, MapPin, Megaphone, MessageSquareWarning, Package, TrendingUp, Truck, UserCheck, UserPlus, Users,
 } from 'lucide-react';
 import Sidebar, { NavGroup } from './Sidebar';
 import Topbar from './Topbar';
 import FooterFrieze from './FooterFrieze';
 import NotificationsDrawer from './NotificationsDrawer';
 import TeamOverview from './telecaller/TeamOverview';
+import BusinessDashboard from './telecaller/BusinessDashboard';
 import TeamLeads from './telecaller/TeamLeads';
 import TeamFollowups from './telecaller/TeamFollowups';
 import TeamSales from './telecaller/TeamSales';
@@ -95,6 +96,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
   const [complaints, setComplaints, complaintsSync] = useComplaints(INITIAL_COMPLAINTS, msg => showToast(`⚠️ ${msg}`));
 
   const pageMeta: Record<string, { title: string; sub: string }> = {
+    dashboard:  { title: 'Business Dashboard',   sub: "Here's an overview of your business performance." },
     overview:   { title: 'Telecalling Team',     sub: `Good day, ${firstName}. Here's how the whole telecalling team is doing.` },
     leads:      { title: 'Leads & Assignment',   sub: 'Import leads and hand them out to the calling executives, then keep everyone’s queue balanced.' },
     followups:  { title: 'Team Follow-ups',      sub: 'Callbacks the calling executives owe: see who is behind and move leads to someone who can call.' },
@@ -158,7 +160,10 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
   const workflow = useMemo(() => workflowSummary(sync.data), [sync.data]);
 
   const navGroups: NavGroup[] = [
-    { label: 'Overview', items: [{ key: 'overview', label: 'Team overview', icon: LayoutDashboard, count: alerts.filter(a => a.level === 'critical').length }] },
+    { label: 'Overview', items: [
+      { key: 'dashboard', label: 'Dashboard', icon: Gauge },
+      { key: 'overview', label: 'Team overview', icon: LayoutDashboard, count: alerts.filter(a => a.level === 'critical').length },
+    ] },
     {
       label: 'Team',
       items: [
@@ -321,6 +326,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
             profile={{ name: user.name, role: 'Telecalling Head', initials: user.initials, detail: `Staff ID ${user.staffId} · Shift 9:00–18:00` }}
           />
 
+          {activePage === 'dashboard' && <BusinessDashboard />}
           {activePage === 'overview' && (
             <TeamOverview
               data={data}
