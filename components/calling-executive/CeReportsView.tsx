@@ -6,6 +6,7 @@ import ExportMenu from '../ExportMenu';
 import HBarList from '../HBarList';
 import { OUTCOMES, fmtDuration, stageName, verticalName } from '../telecaller/tcData';
 import { OUTCOME_COLORS, QueueItem } from './queue';
+import DateRangeSelect from '../DateRangeSelect';
 
 type Period = 'Today' | 'Last 7 days' | 'This month';
 const PERIODS: Period[] = ['Today', 'Last 7 days', 'This month'];
@@ -158,11 +159,14 @@ export default function CeReportsView({ me, leads, followups, activities, queue,
   return (
     <>
       <div className="page-toolbar">
-        <div className="filters">
+        <div className="filters date-chips">
           {PERIODS.map(p => (
             <button key={p} className={`filter-chip ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{p}</button>
           ))}
         </div>
+        {/* Phones: the period buttons become a single calendar dropdown. */}
+        <DateRangeSelect phoneOnly className="toolbar-date" label="Period" value={period} onChange={p => setPeriod(p)}
+          options={PERIODS.map(p => ({ value: p, label: p }))} />
       </div>
 
       <div className="scoreboard">

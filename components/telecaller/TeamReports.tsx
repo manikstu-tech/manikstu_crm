@@ -10,6 +10,7 @@ import { allExecMetrics } from '../views/telecallingMetrics';
 import { PRIORITY_LABEL, STATUS_LABEL as COMPLAINT_STATUS, assigneeName, deadlineText } from './complaintsUtil';
 import { STOCK_LABEL, stockRows } from './inventoryUtil';
 import { STAGE_LABEL, trackingFor } from './orderTracking';
+import DateRangeSelect from '../DateRangeSelect';
 import {
   PERIOD_LABEL, Period, TeamData, callerName, fmtDuration, inPeriod, isOpenLead, isOverdue, lastCallFor, productName, productOf, stageName, verticalName,
 } from './tcData';
@@ -266,12 +267,15 @@ export default function TeamReports({ data, orders: orderList = SALES_ORDERS, co
 
   return (
     <>
-      <div className="page-toolbar">
-        <div className="filters">
+      <div className="page-toolbar reports-toolbar">
+        <div className="filters date-chips">
           {(['today', '7d', 'month'] as Period[]).map(p => (
             <button key={p} className={`filter-chip ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{PERIOD_LABEL[p]}</button>
           ))}
         </div>
+        {/* Phones: the period buttons become a single calendar dropdown. */}
+        <DateRangeSelect phoneOnly className="toolbar-date" label="Period" value={period} onChange={p => setPeriod(p)}
+          options={(['today', '7d', 'month'] as Period[]).map(p => ({ value: p, label: PERIOD_LABEL[p] }))} />
         <div className="toolbar-actions">
           <select className="filter-select" value={caller} onChange={e => setCaller(e.target.value === 'all' ? 'all' : Number(e.target.value))} aria-label="Executive">
             <option value="all">All executives</option>

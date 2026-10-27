@@ -6,7 +6,7 @@
  *
  * Bump VERSION when this file's caching rules change; old caches are removed on activation.
  */
-const VERSION = 'v1';
+const VERSION = 'v3';
 const STATIC_CACHE = `manikstu-seller-static-${VERSION}`;
 const RUNTIME_CACHE = `manikstu-seller-runtime-${VERSION}`;
 const RUNTIME_MAX_ENTRIES = 250;
@@ -77,6 +77,12 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+
+  // Development (localhost): never serve anything from cache, so code and style
+  // changes show immediately. The dev server's files are not content-hashed, so
+  // caching them would keep serving a stale build. Production (a real domain) is
+  // unaffected and keeps full offline caching.
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return;
 
   // Pages: always from the network (they contain the seller's data). Offline → the offline page.
   if (request.mode === 'navigate') {

@@ -13,6 +13,7 @@ import {
 import { MONTH, ORDER_CHIP, daysBefore, rupees, rupeesShort, shortDate, shortDateTime } from '../../lib/format';
 import { ExportFormat, exportTable } from '../../lib/export';
 import ExportMenu from '../ExportMenu';
+import CardTable from '../CardTable';
 
 // The manager sees orders read-only: status, payment and details, no changes.
 interface OrdersViewProps {
@@ -227,7 +228,7 @@ export default function OrdersView({ orders, onToast, initialQuery, report = nul
           </div>
 
           <div className="panel">
-            <div className="table-wrap">
+            <CardTable>
               <table>
                 <caption style={{ textAlign: 'left', fontWeight: 600, padding: '10px 14px' }}>Seller-wise orders</caption>
                 <thead>
@@ -247,11 +248,11 @@ export default function OrdersView({ orders, onToast, initialQuery, report = nul
                   ))}
                 </tbody>
               </table>
-            </div>
+            </CardTable>
           </div>
 
           <div className="panel">
-            <div className="table-wrap">
+            <CardTable>
               <table>
                 <caption style={{ textAlign: 'left', fontWeight: 600, padding: '10px 14px' }}>Telecaller-wise order status</caption>
                 <thead>
@@ -273,7 +274,7 @@ export default function OrdersView({ orders, onToast, initialQuery, report = nul
                   ))}
                 </tbody>
               </table>
-            </div>
+            </CardTable>
           </div>
         </>
       )}
@@ -297,7 +298,7 @@ export default function OrdersView({ orders, onToast, initialQuery, report = nul
       </div>
 
       {/* 3. Filters: search, status, source, payment and date on one line, export at the end */}
-      <div className="filter-row one-line">
+      <div className="filter-row one-line orders-filters">
         <input
           className="filter-input"
           type="search"
@@ -337,7 +338,7 @@ export default function OrdersView({ orders, onToast, initialQuery, report = nul
 
       {/* 4. Orders table */}
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table className="orders-table">
             <thead>
               <tr>
@@ -397,7 +398,7 @@ export default function OrdersView({ orders, onToast, initialQuery, report = nul
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="pager">
           <span>
             {filtered.length === 0 ? '0 orders' : `${safePage * PAGE_SIZE + 1}–${Math.min(filtered.length, (safePage + 1) * PAGE_SIZE)} of ${filtered.length} orders`}

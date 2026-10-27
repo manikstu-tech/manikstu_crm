@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart3, CalendarClock, ClipboardCheck, Inbox, LayoutDashboard, ListChecks, MessageSquareWarning, PackageCheck } from 'lucide-react';
 import Sidebar, { NavGroup } from './Sidebar';
+import BottomNav from './BottomNav';
 import Topbar from './Topbar';
-import FooterFrieze from './FooterFrieze';
 import CeOverview from './calling-executive/CeOverview';
 import { type CallForm, emptyOrderForm } from './calling-executive/CallDeskView';
 import CallbacksView from './calling-executive/CallbacksView';
@@ -206,6 +206,9 @@ export default function CallingExecutiveDashboard({ user, tracker }: { user: Ses
     { label: 'Performance', items: [{ key: 'reports', label: 'Reports', icon: BarChart3 }] },
   ];
 
+  // Phones: the page menu (sidebar drawer), also opened by the bottom bar's More.
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const handleNavigate = (page: string) => {
     setActivePage(page);
     setSearchQuery('');
@@ -213,11 +216,11 @@ export default function CallingExecutiveDashboard({ user, tracker }: { user: Ses
   };
 
   return (
-    <div className="card-layout">
+    <div className="card-layout has-bottom-nav">
       {toastMessage && <div className={`toast ${toastMessage.startsWith('⚠️') ? 'toast-error' : ''}`}>{toastMessage.startsWith('⚠️') ? toastMessage : `✅ ${toastMessage}`}</div>}
 
       <div className="shell">
-        <Sidebar groups={navGroups} activePage={activePage} onSelectPage={handleNavigate} />
+        <Sidebar groups={navGroups} activePage={activePage} onSelectPage={handleNavigate} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
 
         <main className="main">
           <Topbar
@@ -269,10 +272,6 @@ export default function CallingExecutiveDashboard({ user, tracker }: { user: Ses
               onToast={showToast}
             />
           )}
-          <footer className="site-footer">
-            <div>© 2026 Manikstu Agri Network · Calling desk</div>
-          </footer>
-          <FooterFrieze />
         </main>
       </div>
 
@@ -292,6 +291,20 @@ export default function CallingExecutiveDashboard({ user, tracker }: { user: Ses
           onClose={() => setCallTarget(null)}
         />
       )}
+
+      {/* Phones: the daily pages as bottom tabs; More opens the full page menu above. */}
+      <BottomNav
+        groups={navGroups}
+        tabs={[
+          { key: 'overview', label: 'Overview' },
+          { key: 'callbacks', label: 'Call desk' },
+          { key: 'followups', label: 'Follow-ups' },
+          { key: 'order-calls', label: 'Order calls' },
+        ]}
+        activePage={activePage}
+        onSelectPage={handleNavigate}
+        onMore={() => setMenuOpen(true)}
+      />
     </div>
   );
 }

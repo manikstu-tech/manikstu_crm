@@ -5,8 +5,8 @@ import {
   BarChart3, CalendarClock, ClipboardCheck, Inbox, PhoneCall, LayoutDashboard, MapPin, Megaphone, MessageSquareWarning, Package, TrendingUp, Truck, UserCheck, UserPlus, Users,
 } from 'lucide-react';
 import Sidebar, { NavGroup } from './Sidebar';
+import BottomNav from './BottomNav';
 import Topbar from './Topbar';
-import FooterFrieze from './FooterFrieze';
 import NotificationsDrawer from './NotificationsDrawer';
 import TeamOverview from './telecaller/TeamOverview';
 import TeamLeads from './telecaller/TeamLeads';
@@ -199,6 +199,9 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
     { label: 'Reports', items: [{ key: 'reports', label: 'Reports & Analytics', icon: BarChart3 }] },
   ];
 
+  // Phones: the page menu (sidebar drawer), also opened by the bottom bar's More.
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const handleNavigate = (page: string, callerId?: number) => {
     setActivePage(page);
     setFocusCaller(callerId);
@@ -299,11 +302,11 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
   };
 
   return (
-    <div className="card-layout">
+    <div className="card-layout has-bottom-nav">
       {toastMessage && <div className={`toast ${toastMessage.startsWith('⚠️') ? 'toast-error' : ''}`}>{toastMessage.startsWith('⚠️') ? toastMessage : `✅ ${toastMessage}`}</div>}
 
       <div className="shell">
-        <Sidebar groups={navGroups} activePage={activePage} onSelectPage={page => handleNavigate(page)} />
+        <Sidebar groups={navGroups} activePage={activePage} onSelectPage={page => handleNavigate(page)} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
 
         <main className="main">
           <Topbar
@@ -384,10 +387,6 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
           {activePage === 'complaints' && (
             <TeamComplaints complaints={complaints} onComplaintsChange={setComplaints} createComplaint={complaintsSync.create} headName={user.name} searchQuery={searchQuery} onToast={showToast} />
           )}
-          <footer className="site-footer">
-            <div>© 2026 Manikstu Agri Network · Telecalling</div>
-          </footer>
-          <FooterFrieze />
         </main>
       </div>
 
@@ -397,6 +396,20 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
         notifications={notifications}
         onClearAll={() => setAlertsCleared(true)}
         title="Team Alerts"
+      />
+
+      {/* Phones: the daily pages as bottom tabs; More opens the full page menu above. */}
+      <BottomNav
+        groups={navGroups}
+        tabs={[
+          { key: 'overview', label: 'Overview' },
+          { key: 'leads', label: 'Leads' },
+          { key: 'followups', label: 'Follow-ups' },
+          { key: 'complaints', label: 'Complaints' },
+        ]}
+        activePage={activePage}
+        onSelectPage={page => handleNavigate(page)}
+        onMore={() => setMenuOpen(true)}
       />
     </div>
   );

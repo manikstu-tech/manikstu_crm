@@ -7,6 +7,8 @@ import HBarList from '../HBarList';
 import ExportMenu from '../ExportMenu';
 import { EmptyRow } from './shared';
 import { TeamData, callerName, productName, productOf, salesByMonth } from './tcData';
+import CardTable from '../CardTable';
+import DateRangeSelect from '../DateRangeSelect';
 
 type Range = 'today' | 'week' | 'month' | 'year';
 const RANGES: Range[] = ['today', 'week', 'month', 'year'];
@@ -95,7 +97,7 @@ export default function TeamSales({ data, onToast }: { data: TeamData; onToast: 
 
   return (
     <>
-      <div className="page-toolbar">
+      <div className="page-toolbar sales-toolbar">
         <div className="filters" />
         <div className="toolbar-actions">
           <select className="filter-select" value={caller} onChange={e => { setCaller(e.target.value === 'all' ? 'all' : Number(e.target.value)); setPage(0); }} aria-label="Telecaller">
@@ -152,17 +154,20 @@ export default function TeamSales({ data, onToast }: { data: TeamData; onToast: 
       <div className="panel">
         <div className="panel-head" style={{ flexWrap: 'wrap', gap: 10 }}>
           <h2>Sales</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginLeft: 'auto' }}>
+          <div className="sales-head-tools" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginLeft: 'auto' }}>
             <span className="panel-meta">{rows.length} {rows.length === 1 ? 'sale' : 'sales'} · {rupees(revenue)}</span>
             {/* One period for the whole page: the figures, the charts and this table all follow it */}
-            <div className="filters" role="group" aria-label="Sales period">
+            <div className="filters date-chips" role="group" aria-label="Sales period">
               {RANGES.map(r => (
                 <button key={r} className={`filter-chip ${range === r ? 'active' : ''}`} onClick={() => { setRange(r); setPage(0); }}>{RANGE_LABEL[r]}</button>
               ))}
             </div>
+            {/* Phones: the same periods in one dropdown */}
+            <DateRangeSelect phoneOnly label="Sales period" value={range} onChange={r => { setRange(r); setPage(0); }}
+              options={RANGES.map(r => ({ value: r, label: RANGE_LABEL[r] }))} />
           </div>
         </div>
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead><tr><th>Date</th><th>Telecaller</th><th>Customer</th><th>Product</th><th className="num-col">Amount</th></tr></thead>
             <tbody>
@@ -178,7 +183,7 @@ export default function TeamSales({ data, onToast }: { data: TeamData; onToast: 
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="pager">
           <span>{rows.length === 0 ? '0 sales' : `${safePage * PAGE_SIZE + 1}–${Math.min(rows.length, (safePage + 1) * PAGE_SIZE)} of ${rows.length}`}</span>
           <div className="pager-btns">

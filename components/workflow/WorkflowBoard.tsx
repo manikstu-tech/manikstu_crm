@@ -5,6 +5,7 @@ import { WORKFLOW_CHIP, WORKFLOW_LABEL, WorkflowAlert, WorkflowStatus, leadFlows
 import { ago, shortDateTime } from '../../lib/format';
 import { callerName, verticalName } from '../telecaller/tcData';
 import { StatusChip } from '../telecaller/shared';
+import CardTable from '../CardTable';
 
 // Lead distribution and workflow tracking, for the telecalling head and the manager. Everything here is
 // worked out from the shared tracker data, so it matches what the calling executives see on their screens.
@@ -96,7 +97,7 @@ export default function WorkflowBoard({ data, audience, onDistribute, onOpenRepo
 
       {/* Lead-by-lead workflow status */}
       <h3 style={{ margin: '22px 4px 8px' }}>Lead workflow status</h3>
-      <div className="filter-row one-line">
+      <div className="filter-row one-line filter-row-mobile">
         <select className="filter-select" value={status} onChange={e => { setStatus(e.target.value as WorkflowStatus | 'all' | 'attention'); setPage(0); }} aria-label="Workflow status">
           <option value="all">All leads ({flows.length})</option>
           <option value="attention">Needs attention ({flows.filter(f => f.attention).length})</option>
@@ -112,7 +113,7 @@ export default function WorkflowBoard({ data, audience, onDistribute, onOpenRepo
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead>
               <tr><th>Lead</th><th>Product</th><th>Assigned to</th><th>Assigned</th><th>Last call</th><th>Workflow status</th></tr>
@@ -137,7 +138,7 @@ export default function WorkflowBoard({ data, audience, onDistribute, onOpenRepo
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         {rows.length > PAGE_SIZE && (
           <div className="pager">
             <span>{safePage * PAGE_SIZE + 1}–{Math.min(rows.length, (safePage + 1) * PAGE_SIZE)} of {rows.length} leads</span>

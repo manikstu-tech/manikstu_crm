@@ -5,6 +5,7 @@ import { Complaint, ComplaintEvent, ComplaintStatus, RESOLUTION_TYPES, Resolutio
 import type { Priority } from '../../data/complaints';
 import { nowStamp, rupees, shortDateTime } from '../../lib/format';
 import { PRIORITY_LABEL, STATUS_CHIP, STATUS_LABEL, deadlineText, isActive } from '../telecaller/complaintsUtil';
+import CardTable from '../CardTable';
 
 // The complaints the telecalling head has put this executive on (the backend only sends them their own). They work a
 // ticket here: call the customer, add notes, move it along, record how it was resolved, or hand it back to the head
@@ -58,7 +59,7 @@ export default function ExecComplaints({ complaints, meId, meName, searchQuery =
         <div className="score"><div className="num">{mine.filter(c => !isActive(c)).length}</div><div className="label">Resolved by me</div></div>
       </div>
 
-      <div className="filter-row one-line">
+      <div className="filter-row one-line filter-row-mobile">
         <select className="filter-select" value={tab} onChange={e => setTab(e.target.value as Tab)} aria-label="Complaint status">
           <option value="open">Open ({mine.filter(isActive).length})</option>
           <option value="resolved">Resolved ({mine.filter(c => !isActive(c)).length})</option>
@@ -67,7 +68,7 @@ export default function ExecComplaints({ complaints, meId, meName, searchQuery =
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead>
               <tr><th>Ticket</th><th>Customer</th><th>Complaint</th><th>Priority</th><th>Status</th><th>Deadline</th><th /></tr>
@@ -96,7 +97,7 @@ export default function ExecComplaints({ complaints, meId, meName, searchQuery =
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
 
       {open && <TicketDrawer c={open} meName={meName} onClose={() => setOpenId(null)} onUpdate={update} />}

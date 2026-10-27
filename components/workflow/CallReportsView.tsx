@@ -6,6 +6,7 @@ import { fmtDuration, OUTCOMES, callerName, stageName } from '../telecaller/tcDa
 import { shortDate, shortDateTime } from '../../lib/format';
 import { StatusChip } from '../telecaller/shared';
 import Modal from '../Modal';
+import CardTable from '../CardTable';
 
 // Every call is also a call report: the call status, the customer's response, remarks and the follow-up
 // booked. The telecalling head verifies them here (or sends one back with a reason); the manager sees the same
@@ -76,14 +77,14 @@ export default function CallReportsView({ data, canVerify, onVerify, searchQuery
 
   return (
     <>
-      <div className="scoreboard">
+      <div className="scoreboard cr-board">
         <div className="score"><div className="num">{counts.submitted}</div><div className="label">Awaiting verification</div></div>
         <div className="score"><div className="num">{counts.verified}</div><div className="label">Verified</div></div>
         <div className="score"><div className="num">{counts.returned}{counts.returned > 0 && <small className="warn">with executives</small>}</div><div className="label">Sent back to correct</div></div>
         <div className="score"><div className="num">{data.activities.length}</div><div className="label">Reports in total</div></div>
       </div>
 
-      <div className="filter-row one-line">
+      <div className="filter-row one-line cr-filters">
         <select className="filter-select" value={status} onChange={e => { setStatus(e.target.value as ReportStatus | 'all'); setPage(0); }} aria-label="Report status">
           <option value="all">All reports ({data.activities.length})</option>
           {(['submitted', 'returned', 'verified'] as ReportStatus[]).map(s => <option key={s} value={s}>{s === 'submitted' ? 'Awaiting verification' : REPORT_LABEL[s]} ({counts[s]})</option>)}
@@ -105,7 +106,7 @@ export default function CallReportsView({ data, canVerify, onVerify, searchQuery
       {error && <div className="inline-alert" role="alert">{error}</div>}
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead>
               <tr>
@@ -159,7 +160,7 @@ export default function CallReportsView({ data, canVerify, onVerify, searchQuery
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         {rows.length > PAGE_SIZE && (
           <div className="pager">
             <span>{safePage * PAGE_SIZE + 1}–{Math.min(rows.length, (safePage + 1) * PAGE_SIZE)} of {rows.length} reports</span>

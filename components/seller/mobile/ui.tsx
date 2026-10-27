@@ -4,7 +4,7 @@
 
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, Loader2, Search, X } from 'lucide-react';
+import { Bell, ChevronRight, Loader2, Search, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { CatalogProduct } from '../../../data/catalogProducts';
 import type { OrderStatus } from '../../../data/managerDashboard';
@@ -89,7 +89,7 @@ export function PageIntro({ children }: { children: React.ReactNode }) {
 
 export interface SegOption<K extends string> { key: K; label: string; count?: number; tone?: 'warn' }
 
-export function Segmented<K extends string>({ options, value, onChange, label }: { options: SegOption<K>[]; value: K; onChange: (k: K) => void; label: string }) {
+export function Segmented<K extends string>({ options, value, onChange, label, className }: { options: SegOption<K>[]; value: K; onChange: (k: K) => void; label: string; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   // Keep the chosen chip in view when the row scrolls sideways.
   useEffect(() => {
@@ -97,7 +97,7 @@ export function Segmented<K extends string>({ options, value, onChange, label }:
     el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [value]);
   return (
-    <div className="sx-seg" role="group" aria-label={label} ref={ref}>
+    <div className={className ? `sx-seg ${className}` : 'sx-seg'} role="group" aria-label={label} ref={ref}>
       {options.map(o => (
         <button key={o.key} type="button" className={`sx-seg-btn ${o.tone === 'warn' && o.count ? 'sx-seg-warn' : ''}`} aria-pressed={value === o.key} onClick={() => onChange(o.key)}>
           {o.label}
@@ -357,6 +357,17 @@ export function ConfirmSheet({ open, title, message, confirmLabel, danger, busy,
       <div id={msgId} className="sx-confirm-msg">{message}</div>
       {children}
     </Sheet>
+  );
+}
+
+/* ---------- Notifications bell (inline, for screens that show it in their own first row) ---------- */
+
+export function BellLink({ unread }: { unread: number }) {
+  return (
+    <AppLink href="/seller/notifications" className="sx-icon-btn sx-bell sx-inline-bell" aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}>
+      <Bell size={21} aria-hidden />
+      {unread > 0 && <span className="sx-bell-badge" aria-hidden>{unread > 9 ? '9+' : unread}</span>}
+    </AppLink>
   );
 }
 

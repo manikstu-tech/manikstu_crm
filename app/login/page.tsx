@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import LoginForm, { type DemoAccount } from '../../components/LoginForm';
 import HeaderFrieze from '../../components/HeaderFrieze';
-import FooterFrieze from '../../components/FooterFrieze';
 
 export const metadata: Metadata = {
   title: 'Sign in · Manikstu Samarth',
@@ -33,7 +32,6 @@ export default function LoginPage() {
           <LoginForm demoAccounts={process.env.NODE_ENV !== 'production' ? DEMO_ACCOUNTS : []} />
         </div>
       </main>
-      <FooterFrieze />
       <footer className="site-footer">
         <div>© 2026 Manikstu Agri Network · Odisha</div>
       </footer>

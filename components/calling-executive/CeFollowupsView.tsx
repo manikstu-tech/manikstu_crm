@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays, Clock, Phone } from 'lucide-react';
 import { Followup, LeadActivity, TODAY, TrackerLead } from '../../data/managerDashboard';
 import { ago, dayStart, daysBefore, pct, shortDate } from '../../lib/format';
 import { lastCallFor, stageName, time12, verticalName } from '../telecaller/tcData';
+import CardTable from '../CardTable';
 
 type Filter = 'all' | 'overdue' | 'today' | 'upcoming' | 'done';
 const FILTER_LABEL: Record<Filter, string> = { all: 'All', overdue: 'Overdue', today: 'Due today', upcoming: 'Upcoming', done: 'Done' };
@@ -101,17 +102,23 @@ export default function CeFollowupsView({ leads, followups, activities, searchQu
       </div>
 
       <div className="page-toolbar">
-        <div className="filters">
+        <div className="filters date-chips">
           {(Object.keys(FILTER_LABEL) as Filter[]).map(fk => (
             <button key={fk} className={`filter-chip ${filter === fk ? 'active' : ''}`} onClick={() => setFilter(fk)}>
               {FILTER_LABEL[fk]}{fk !== 'done' ? ` (${counts[fk]})` : ''}
             </button>
           ))}
         </div>
+        {/* Phones: the five status filters become one dropdown. */}
+        <select className="filter-select phone-select fu-status-select" value={filter} onChange={e => setFilter(e.target.value as Filter)} aria-label="Follow-up status">
+          {(Object.keys(FILTER_LABEL) as Filter[]).map(fk => (
+            <option key={fk} value={fk}>{FILTER_LABEL[fk]}{fk !== 'done' ? ` (${counts[fk]})` : ''}</option>
+          ))}
+        </select>
       </div>
 
       <div className="panel">
-        <div className="table-wrap fu-wrap">
+        <CardTable className="fu-wrap">
           <table className="orders-table fu-table">
             <thead>
               <tr><th>Lead</th><th>Reason</th><th>{filter === 'done' ? 'Done' : 'Due'}</th><th>Last call</th><th></th></tr>
@@ -164,7 +171,7 @@ export default function CeFollowupsView({ leads, followups, activities, searchQu
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
     </>
   );

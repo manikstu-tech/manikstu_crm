@@ -12,6 +12,7 @@ import { useSeller } from '../app/SellerProvider';
 import { ORDER_STATUS_LABEL, SellerOrder, counts } from '../sellerData';
 import { HBars } from './charts';
 import { Btn, Card, Chip, EmptyState, Metric, ORDER_TONE, PageIntro, SectionHead, Segmented, useShowMore } from './ui';
+import DateRangeSelect from '../../DateRangeSelect';
 
 type Period = 'month' | '30d' | '90d' | 'all';
 const PERIOD_LABEL: Record<Period, string> = { month: 'This month', '30d': '30 days', '90d': '90 days', all: 'All time' };
@@ -138,8 +139,11 @@ export default function RegionalScreen() {
           </select>
         </div>
       </div>
-      <Segmented<Period> label="Period" value={period} onChange={setPeriod}
+      <Segmented<Period> label="Period" value={period} onChange={setPeriod} className="date-chips"
         options={(Object.keys(PERIOD_LABEL) as Period[]).map(k => ({ key: k, label: PERIOD_LABEL[k] }))} />
+      {/* Phones: the same periods in one dropdown */}
+      <DateRangeSelect<Period> phoneOnly label="Period" value={period} onChange={setPeriod}
+        options={(Object.keys(PERIOD_LABEL) as Period[]).map(k => ({ value: k, label: PERIOD_LABEL[k] }))} />
       <div className="sx-field">
         <label htmlFor="sx-rg-status">Order status</label>
         <select id="sx-rg-status" value={status} onChange={e => setStatus(e.target.value as OrderStatus | 'all')}>
@@ -181,7 +185,7 @@ export default function RegionalScreen() {
 
       <Card aria-labelledby="sx-rg-list">
         <SectionHead id="sx-rg-list" title={areaLabel} meta={PERIOD_LABEL[period]} />
-        <Segmented<'orders' | 'customers'> label="List" value={view} onChange={setView}
+        <Segmented<'orders' | 'customers'> label="List" value={view} onChange={setView} className="sx-seg-split"
           options={[{ key: 'orders', label: 'Orders', count: rows.length }, { key: 'customers', label: 'By customer', count: customerRows.length }]} />
         {view === 'orders' ? (
           rows.length === 0 ? <EmptyState icon={ShoppingCart} title="No orders for these filters" /> : (

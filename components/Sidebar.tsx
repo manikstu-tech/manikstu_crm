@@ -21,14 +21,19 @@ interface SidebarProps {
   groups: NavGroup[];
   activePage: string;
   onSelectPage: (pageKey: string) => void;
+  /** Optional: open / close the phone menu from outside (e.g. the bottom bar's More). Left out, the sidebar manages it. */
+  menuOpen?: boolean;
+  onMenuOpenChange?: (open: boolean) => void;
 }
 
 /**
  * Cream sidebar shared by every dashboard: logo, then grouped pages with icons and counts.
  * On phones the page list is hidden behind a ☰ button and opens as a vertical drawer.
  */
-export default function Sidebar({ groups, activePage, onSelectPage }: SidebarProps) {
-  const [open, setOpen] = useState(false);
+export default function Sidebar({ groups, activePage, onSelectPage, menuOpen, onMenuOpenChange }: SidebarProps) {
+  const [openState, setOpenState] = useState(false);
+  const open = menuOpen ?? openState;
+  const setOpen = (value: boolean) => (onMenuOpenChange ? onMenuOpenChange(value) : setOpenState(value));
   const active = groups.flatMap(g => g.items).find(i => i.key === activePage);
 
   // Esc closes the drawer; the page behind does not scroll while it is open.

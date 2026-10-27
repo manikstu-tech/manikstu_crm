@@ -11,7 +11,7 @@ import { useSeller } from '../app/SellerProvider';
 import { ORDER_STATUS_LABEL, counts, nextPayoutDate } from '../sellerData';
 import { BarChart, HBars, Spark } from './charts';
 import { STEP_SHORT, useStageRunner } from './dialogs';
-import { Btn, Card, Chip, EmptyState, Metric, ORDER_TONE, ProductThumb, SectionHead } from './ui';
+import { BellLink, Btn, Card, Chip, EmptyState, Metric, ORDER_TONE, ProductThumb, SectionHead } from './ui';
 
 const dateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const INSTALL_DISMISS_KEY = 'mk-seller-install-dismissed';
@@ -41,7 +41,7 @@ function InstallCard() {
 }
 
 export default function HomeScreen() {
-  const { user, seller, myOrders, myProducts, stock, shipmentDetails, nextManualStep, openConfirmCard, busyOrderIds, counts: c } = useSeller();
+  const { user, seller, myOrders, myProducts, stock, shipmentDetails, nextManualStep, openConfirmCard, busyOrderIds, counts: c, unreadCount } = useSeller();
   const { navigate } = useNav();
   const stage = useStageRunner();
 
@@ -83,6 +83,7 @@ export default function HomeScreen() {
           <h1 className="sx-greet-title">Namaskar, {firstName}</h1>
           <p className="sx-greet-sub">{seller.business}</p>
         </div>
+        <BellLink unread={unreadCount} />
       </div>
 
       <section className="sx-hero" aria-labelledby="sx-hero-label">

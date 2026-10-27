@@ -7,6 +7,7 @@ import HBarList from '../HBarList';
 import { OUTCOMES, PERIOD_LABEL, Period, TeamData, fmtDuration, inPeriod, isOverdue, staffStats, teamAlerts } from '../telecaller/tcData';
 import { allExecMetrics, callsPerDay, funnel } from './telecallingMetrics';
 import TelecallingLeadReport, { LiveCallFeed } from './TelecallingLeadReport';
+import CardTable from '../CardTable';
 
 type SortKey = 'revenue' | 'calls' | 'connectRate' | 'openLeads' | 'overdue' | 'sales' | 'conversion';
 
@@ -90,11 +91,15 @@ export default function TelecallingOverviewView({ data, onOpenExecutive, onToast
   return (
     <>
       <div className="page-toolbar">
-        <div className="filters">
+        <div className="filters date-chips">
           {(['today', '7d', 'month'] as Period[]).map(p => (
             <button key={p} className={`filter-chip ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{PERIOD_LABEL[p]}</button>
           ))}
         </div>
+        {/* Phones: the period filters become one dropdown. */}
+        <select className="filter-select phone-select" value={period} onChange={e => setPeriod(e.target.value as Period)} aria-label="Period">
+          {(['today', '7d', 'month'] as Period[]).map(p => <option key={p} value={p}>{PERIOD_LABEL[p]}</option>)}
+        </select>
         <div className="toolbar-actions">
           <select className="filter-select" value={region} onChange={e => setRegion(e.target.value)} aria-label="Region">
             <option value="all">All regions</option>
@@ -130,7 +135,7 @@ export default function TelecallingOverviewView({ data, onOpenExecutive, onToast
 
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-head"><h2>Leaderboard</h2><ExportMenu onExport={runExport} /></div>
-        <div className="table-wrap">
+        <CardTable>
           <table className="team-table roster-table">
             <thead>
               <tr>
@@ -165,14 +170,14 @@ export default function TelecallingOverviewView({ data, onOpenExecutive, onToast
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="panel-note">Click an executive for full details. Calls, sales and revenue are for {PERIOD_LABEL[period].toLowerCase()}; leads and follow-ups are as of now.</div>
       </div>
 
       <div className="grid equal-2">
         <div className="panel">
           <div className="panel-head"><h2>Lead funnel</h2><span className="panel-meta">{teamLeads.filter(l => l.vertical_id === funnelVertical).length} leads</span></div>
-          <div className="filters" style={{ marginBottom: 14 }}>
+          <div className="filters pipeline-tabs" style={{ marginBottom: 14 }}>
             {VERTICALS.map(v => (
               <button key={v.id} className={`filter-chip ${funnelVertical === v.id ? 'active' : ''}`} onClick={() => setFunnelVertical(v.id)}>{v.name}</button>
             ))}

@@ -8,7 +8,6 @@ import React from 'react';
 import { BarChart3, Boxes, HelpCircle, LayoutDashboard, MapPin, Settings, ShoppingCart, Truck, UserRound, Wallet } from 'lucide-react';
 import Sidebar, { NavGroup } from './Sidebar';
 import Topbar from './Topbar';
-import FooterFrieze from './FooterFrieze';
 import Modal from './Modal';
 import NotificationsDrawer from './NotificationsDrawer';
 import SellerOverview from './seller/SellerOverview';
@@ -165,7 +164,6 @@ export default function SellerDashboard() {
           <footer className="site-footer">
             <div>© 2026 Manikstu Agri Network · Seller Hub</div>
           </footer>
-          <FooterFrieze />
         </main>
       </div>
 

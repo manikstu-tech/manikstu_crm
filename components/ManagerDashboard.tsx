@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import FooterFrieze from './FooterFrieze';
 import Sidebar, { NavGroup } from './Sidebar';
 import Topbar from './Topbar';
 import Modal from './Modal';
@@ -494,7 +493,6 @@ export default function ManagerDashboard({
           <footer className="site-footer">
             <div>© 2026 Manikstu Agri Network · Territory Operations Manager</div>
           </footer>
-          <FooterFrieze />
         </main>
       </div>
 

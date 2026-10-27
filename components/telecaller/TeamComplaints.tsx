@@ -16,6 +16,7 @@ import NewComplaint, { NewComplaintInput } from './NewComplaint';
 import {
   OVERLOAD_AT, PRIORITY_LABEL, STATUS_CHIP, STATUS_LABEL, assigneeName, deadlineText, isActive, isOverdue, isUnassigned,
 } from './complaintsUtil';
+import CardTable from '../CardTable';
 
 type Tab = 'To assign' | 'Open' | 'Waiting' | 'Escalated' | 'Resolved' | 'Closed' | 'All';
 const TABS: Tab[] = ['To assign', 'Open', 'Waiting', 'Escalated', 'Resolved', 'Closed', 'All'];
@@ -73,7 +74,9 @@ interface Props {
 }
 
 export default function TeamComplaints({ complaints, onComplaintsChange, createComplaint, headName, searchQuery, onToast }: Props) {
-  const [tab, setTab] = useState<Tab>(() => (complaints.some(isUnassigned) ? 'To assign' : 'Open'));
+  // The status the page opens on. It isn't shown as a filter tag: only statuses picked after that are.
+  const [startTab] = useState<Tab>(() => (complaints.some(isUnassigned) ? 'To assign' : 'Open'));
+  const [tab, setTab] = useState<Tab>(startTab);
   const [attention, setAttention] = useState<string | null>(null);
   const [priority, setPriority] = useState<Priority | 'all'>('all');
   const [category, setCategory] = useState<Category | 'all'>('all');
@@ -259,7 +262,7 @@ export default function TeamComplaints({ complaints, onComplaintsChange, createC
   const ownerLabel = owner === 'none' ? 'Unassigned' : owner === 'head' ? who('head') : TELECALLERS.find(t => String(t.id) === owner)?.name ?? '';
   const filterTags = [
     attn && { key: 'attn', k: 'Needs action', v: attn.label, clear: () => setAttention(null) },
-    !attn && tab !== 'All' && { key: 'tab', k: 'Status', v: tab, clear: () => setTab('All') },
+    !attn && tab !== 'All' && tab !== startTab && { key: 'tab', k: 'Status', v: tab, clear: () => setTab('All') },
     priority !== 'all' && { key: 'priority', k: 'Priority', v: PRIORITY_LABEL[priority], clear: () => setPriority('all') },
     category !== 'all' && { key: 'category', k: 'Category', v: category, clear: () => setCategory('all') },
     owner !== 'all' && { key: 'owner', k: 'Assigned to', v: ownerLabel, clear: () => setOwner('all') },
@@ -331,7 +334,7 @@ export default function TeamComplaints({ complaints, onComplaintsChange, createC
       </div>
 
       {/* One filter menu, tags, new complaint, export */}
-      <div className="lf-bar">
+      <div className="lf-bar cmp-bar">
         <div className="lf-wrap" ref={menuRef}>
           <button className={`lf-trigger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="dialog">
             <SlidersHorizontal size={15} /> Filters
@@ -388,7 +391,7 @@ export default function TeamComplaints({ complaints, onComplaintsChange, createC
         </div>
 
         <span className="lf-total">{rows.length} complaints</span>
-        <button className="btn-primary cmp-new" onClick={() => setCreating(true)}><Plus size={15} /> New complaint</button>
+        <button className="btn-primary cmp-new" onClick={() => setCreating(true)} aria-label="New complaint"><Plus size={15} /> <span className="cmp-new-full">New complaint</span><span className="cmp-new-short">New</span></button>
         <ExportMenu onExport={runExport} />
       </div>
 
@@ -401,7 +404,7 @@ export default function TeamComplaints({ complaints, onComplaintsChange, createC
       )}
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table className="orders-table complaints-table">
             <thead>
               <tr>
@@ -454,7 +457,7 @@ export default function TeamComplaints({ complaints, onComplaintsChange, createC
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
 
       <div className="grid equal-2">
@@ -470,7 +473,7 @@ export default function TeamComplaints({ complaints, onComplaintsChange, createC
 
       <div className="panel">
         <div className="panel-head"><h2>By person</h2><span className="panel-meta">resolved and times are for the last 30 days</span></div>
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead>
               <tr><th>Telecaller</th><th className="num-col">Open</th><th className="num-col">Past deadline</th><th className="num-col">Resolved</th><th className="num-col">Avg time</th><th className="num-col">On time</th><th className="num-col">Rating</th></tr>
@@ -492,7 +495,7 @@ export default function TeamComplaints({ complaints, onComplaintsChange, createC
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="panel-note">Sample data: the backend has no complaints table yet. Refunds this month: {rupees(refunds)}.</div>
       </div>
 

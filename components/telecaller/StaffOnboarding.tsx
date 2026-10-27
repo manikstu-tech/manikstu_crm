@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Copy, Eye, EyeOff, KeyRound, MessageCircle, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, KeyRound, MessageCircle, Power, RefreshCw, Trash2, User, UserPlus, X } from 'lucide-react';
 import { TELECALLERS, VERTICALS } from '../../data/managerDashboard';
 import type { PublicStaffAccount } from '../../lib/staffAccounts';
 import Modal from '../Modal';
+import CardTable from '../CardTable';
 
 type Stage = 'deactivated' | 'share-details' | 'training' | 'ready';
 const STAGE_LABEL: Record<Stage, string> = {
@@ -213,7 +214,7 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
         <div className="score"><div className="num">{count('deactivated')}</div><div className="label">Deactivated</div></div>
       </div>
 
-      <div className="page-toolbar">
+      <div className="page-toolbar staff-toolbar">
         <div className="loc" style={{ maxWidth: '62ch' }}>
           Add each new telecaller here to give them a <strong>Staff ID</strong> and a <strong>temporary password</strong>.
           They&apos;ll set their own password the first time they sign in.
@@ -236,7 +237,66 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
           </div>
         )}
         {accounts && accounts.length > 0 && (
-          <div className="table-wrap">
+          <>
+          {/* Phones: a compact staff card per person (the table below is hidden on phones). */}
+          <ul className="staff-m-cards">
+            {accounts.map(a => {
+              const stage = stageOf(a);
+              const steps = [
+                { label: 'Staff ID & password created', done: true },
+                { label: 'Login details shared', done: a.detailsShared, toggle: () => patch(a, { detailsShared: !a.detailsShared }) },
+                { label: 'Training done', done: a.trainingDone, toggle: () => patch(a, { trainingDone: !a.trainingDone }) },
+              ];
+              const done = steps.filter(s => s.done).length;
+              return (
+                <li key={a.id} className={`staff-m-card ${stage === 'deactivated' ? 'is-off' : ''}`}>
+                  <div className="smc-head">
+                    <span className="smc-avatar"><User size={18} /></span>
+                    <div className="smc-id">
+                      <div className="smc-name">{a.name}</div>
+                      <div className="smc-sub">{a.staffId}{a.email ? ` · ${a.email}` : ` · ${a.mobile}`}</div>
+                      <div className="smc-sub">Added {fmtDate(a.createdAt)}</div>
+                    </div>
+                    <span className={`chip ${STAGE_CHIP[stage]}`}>{STAGE_LABEL[stage]}</span>
+                  </div>
+                  <div className="smc-grid">
+                    <div><div className="smc-label">Region</div><div className="smc-val">{a.region}</div></div>
+                    <div><div className="smc-label">Products</div><div className="smc-val">{verticalNames(a.verticalIds)}</div></div>
+                    <div><div className="smc-label">Daily target</div><div className="smc-val">{a.dailyTarget} calls/day</div></div>
+                    <div><div className="smc-label">Onboarding</div><div className="smc-val">{done} of {steps.length} completed</div></div>
+                  </div>
+                  <div className="smc-progress">
+                    <div className="smc-prog-head"><span>Onboarding progress</span><span>{done} of {steps.length} completed</span></div>
+                    <div className="smc-bar"><span style={{ width: `${(done / steps.length) * 100}%` }} /></div>
+                    <ul className="smc-steps">
+                      {steps.map(s => (
+                        <li key={s.label} className={s.done ? 'ok' : 'missing'}>
+                          {s.toggle && a.isActive ? (
+                            <button type="button" className="step-toggle" onClick={s.toggle} title={s.done ? 'Mark as not done' : 'Mark as done'}>
+                              <span className="smc-tick">{s.done ? <Check size={12} /> : <X size={12} />}</span> {s.label}
+                            </button>
+                          ) : (
+                            <><span className="smc-tick">{s.done ? <Check size={12} /> : <X size={12} />}</span> {s.label}</>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {a.mustChangePassword && a.isActive && <div className="smc-note">Must set own password at first sign-in</div>}
+                  <div className="smc-actions">
+                    {a.isActive && (
+                      <button type="button" className="smc-btn" onClick={() => { setResetFor(a); setResetPw(generatePassword()); setResetDone(false); }}><KeyRound size={14} /> Reset password</button>
+                    )}
+                    {a.isActive
+                      ? <button type="button" className="smc-btn danger" onClick={() => deactivate(a)}><Power size={14} /> Deactivate</button>
+                      : <button type="button" className="smc-btn smc-wide" onClick={() => patch(a, { isActive: true }, `${a.name} activated`)}><Power size={14} /> Activate</button>}
+                    <button type="button" className="smc-btn danger smc-wide" onClick={() => remove(a)}><Trash2 size={14} /> Delete</button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <CardTable className="staff-desktop-only">
             <table className="orders-table staff-table">
               <thead>
                 <tr><th>Staff</th><th>Region · products</th><th>Status</th><th>Onboarding</th><th>Actions</th></tr>
@@ -294,11 +354,12 @@ export default function StaffOnboarding({ onToast }: { onToast: (message: string
                 })}
               </tbody>
             </table>
-          </div>
+          </CardTable>
+          </>
         )}
       </div>
 
-      <div className="panel-note">
+      <div className="panel-note staff-backend-note">
         Staff can&apos;t sign in with these details yet: that needs the backend (see <code>docs/backend-staff-onboarding.md</code>).
         Until then, staff are saved on this computer only, in <code>.data/staff-accounts.json</code>, with passwords stored hashed.
       </div>

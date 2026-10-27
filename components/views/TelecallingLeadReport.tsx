@@ -4,6 +4,7 @@ import { ago, shortDate, shortDateTime } from '../../lib/format';
 import { ExportFormat, exportTable } from '../../lib/export';
 import ExportMenu from '../ExportMenu';
 import { TeamData, callerName, fmtDuration, isOpenLead, isOverdue, isWonLead, stageName, time12, verticalName } from '../telecaller/tcData';
+import CardTable from '../CardTable';
 
 const PAGE_SIZE = 15;
 const OUTCOME_CHIP: Record<string, string> = { Connected: 'delivered', 'No answer': 'transit', Busy: 'pending', 'Wrong number': 'muted', 'Not interested': 'muted' };
@@ -101,12 +102,16 @@ export default function TelecallingLeadReport({ data, onToast }: { data: TeamDat
         <h2>Telecalling report · every lead</h2>
         <ExportMenu onExport={runExport} />
       </div>
-      <div className="filters" style={{ marginBottom: 12 }}>
+      <div className="filters date-chips" style={{ marginBottom: 12 }}>
         {(Object.keys(FILTER_LABEL) as LeadFilter[]).map(f => (
           <button key={f} className={`filter-chip ${filter === f ? 'active' : ''}`} onClick={() => { setFilter(f); reset(); }}>{FILTER_LABEL[f]}</button>
         ))}
       </div>
-      <div className="filter-row" style={{ margin: '0 0 12px' }}>
+      {/* Phones: the lead status filters become one dropdown. */}
+      <select className="filter-select phone-select lead-status-select" value={filter} onChange={e => { setFilter(e.target.value as LeadFilter); reset(); }} aria-label="Lead status">
+        {(Object.keys(FILTER_LABEL) as LeadFilter[]).map(f => <option key={f} value={f}>{FILTER_LABEL[f]}</option>)}
+      </select>
+      <div className="filter-row lead-report-filters" style={{ margin: '0 0 12px' }}>
         <input className="filter-select" placeholder="Search lead name or phone…" value={query} onChange={e => { setQuery(e.target.value); reset(); }} aria-label="Search leads" />
         <select className="filter-select" value={caller} onChange={e => { setCaller(e.target.value); reset(); }} aria-label="Executive">
           <option value="all">All executives</option>
@@ -117,7 +122,7 @@ export default function TelecallingLeadReport({ data, onToast }: { data: TeamDat
           {VERTICALS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
       </div>
-      <div className="table-wrap">
+      <CardTable>
         <table>
           <thead>
             <tr><th>Lead</th><th>Assigned to</th><th>Status</th><th className="num-col">Calls</th><th>Last call</th><th>Next follow-up</th></tr>
@@ -143,7 +148,7 @@ export default function TelecallingLeadReport({ data, onToast }: { data: TeamDat
             ))}
           </tbody>
         </table>
-      </div>
+      </CardTable>
       <div className="pager">
         <span>{shown.length} leads · newest activity first</span>
         {pages > 1 && (

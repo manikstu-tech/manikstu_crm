@@ -11,6 +11,7 @@ import { useSeller } from '../app/SellerProvider';
 import { ORDER_STATUS_LABEL, SellerOrder, counts } from '../sellerData';
 import { BarChart, HBars, StackBar } from './charts';
 import { Btn, Card, EmptyState, Metric, PageIntro, ProductThumb, SectionHead, Segmented } from './ui';
+import DateRangeSelect from '../../DateRangeSelect';
 
 type Period = 'month' | '30d' | '90d' | 'all';
 const PERIOD_LABEL: Record<Period, string> = { month: 'This month', '30d': '30 days', '90d': '90 days', all: 'All time' };
@@ -132,7 +133,10 @@ export default function ReportsScreen() {
   return (
     <div className="sx-stack">
       <PageIntro>How your sales are going, and files to download.</PageIntro>
-      <Segmented<Period> label="Period" value={period} onChange={setPeriod} options={(Object.keys(PERIOD_LABEL) as Period[]).map(k => ({ key: k, label: PERIOD_LABEL[k] }))} />
+      <Segmented<Period> label="Period" value={period} onChange={setPeriod} className="date-chips" options={(Object.keys(PERIOD_LABEL) as Period[]).map(k => ({ key: k, label: PERIOD_LABEL[k] }))} />
+      {/* Phones: the same periods in one dropdown */}
+      <DateRangeSelect<Period> phoneOnly label="Period" value={period} onChange={setPeriod}
+        options={(Object.keys(PERIOD_LABEL) as Period[]).map(k => ({ value: k, label: PERIOD_LABEL[k] }))} />
 
       <div className="sx-metrics sx-metrics-3">
         <Metric icon={IndianRupee} value={rupeesShort(sales)} label="Sales" sub="before commission" />
