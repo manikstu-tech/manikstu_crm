@@ -192,11 +192,15 @@ export default function InventoryView({ stock, onTriggerReorder }: InventoryView
       </div>
 
       <div className="page-toolbar inv-toolbar">
-        <div className="filters">
+        <div className="filters date-chips">
           {([['all', 'All products'], ['low', `Low stock (${lowCount})`], ['out', `Out of stock (${outCount})`]] as [StatusFilter, string][]).map(([k, label]) => (
             <button key={k} className={`filter-chip ${statusFilter === k ? 'active' : ''}`} onClick={() => setStatusFilter(k)}>{label}</button>
           ))}
         </div>
+        {/* Phones: the stock status filters become one dropdown. */}
+        <select className="filter-select phone-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value as StatusFilter)} aria-label="Stock status">
+          {([['all', 'All products'], ['low', `Low stock (${lowCount})`], ['out', `Out of stock (${outCount})`]] as [StatusFilter, string][]).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+        </select>
         <div className="toolbar-actions">
           <span className="panel-meta">{scope}</span>
           <button className="btn-secondary inv-export" onClick={exportCsv}><Download size={15} /> Export CSV</button>

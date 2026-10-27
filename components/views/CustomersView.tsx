@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Customer } from '../../data/initialData';
+import CardTable from '../CardTable';
 
 interface CustomersViewProps {
   customers: Customer[];
@@ -58,7 +59,7 @@ export default function CustomersView({
       </div>
 
       <div className="page-toolbar">
-        <div className="filters">
+        <div className="filters date-chips">
           {filters.map((f) => (
             <button
               key={f}
@@ -69,6 +70,10 @@ export default function CustomersView({
             </button>
           ))}
         </div>
+        {/* Phones: the status filters become one dropdown. */}
+        <select className="filter-select phone-select" value={filter} onChange={e => setFilter(e.target.value)} aria-label="Customer status">
+          {filters.map(f => <option key={f} value={f}>{f} ({getCount(f)})</option>)}
+        </select>
         <button className="btn-primary" onClick={onOpenAddCustomerModal}>
           + Add Farmer Profile
         </button>
@@ -85,7 +90,7 @@ export default function CustomersView({
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead>
               <tr>
@@ -137,7 +142,7 @@ export default function CustomersView({
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
     </>
   );

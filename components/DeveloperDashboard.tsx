@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Sidebar, { NavGroup } from './Sidebar';
 import Topbar from './Topbar';
 import Modal from './Modal';
-import FooterFrieze from './FooterFrieze';
 import type { SessionUser } from '../lib/session';
 import {
   ArrowUpRight,
@@ -25,6 +24,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
+import CardTable from './CardTable';
 
 /** Every role portal the super admin can open. */
 interface Portal {
@@ -319,7 +319,7 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
 
               {usersError && <div className="inline-alert" role="alert" style={{ marginBottom: 12 }}>{usersError}</div>}
 
-              <div className="table-wrap">
+              <CardTable wideCols={[2]}>
                 <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -364,13 +364,13 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
                     )}
                   </tbody>
                 </table>
-              </div>
+              </CardTable>
             </SectionCard>
           )}
 
           {activePage === 'roles' && (
             <SectionCard title="Roles & access" desc="What each role can see and do, and its seeded login.">
-              <div className="table-wrap">
+              <CardTable wideCols={[3]}>
                 <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr><Th>Role</Th><Th>Who</Th><Th>Can do</Th><Th>Login (email)</Th></tr>
@@ -386,7 +386,7 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </CardTable>
               <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginTop: 14 }}>
                 The <strong>developer</strong> role is the only one that bypasses every role gate — on the backend it passes
                 every <code style={codeStyle}>role:</code> middleware check automatically.
@@ -415,7 +415,6 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
           <footer className="site-footer">
             <div>© 2026 Manikstu Agri Network · Super Admin Console</div>
           </footer>
-          <FooterFrieze />
         </main>
       </div>
 

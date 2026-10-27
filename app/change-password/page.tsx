@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import ChangePasswordForm from '../../components/ChangePasswordForm';
 import HeaderFrieze from '../../components/HeaderFrieze';
-import FooterFrieze from '../../components/FooterFrieze';
 import { getSession } from '../../lib/auth';
 import { redirect } from 'next/navigation';
 
@@ -33,7 +32,6 @@ export default async function ChangePasswordPage() {
           <ChangePasswordForm />
         </div>
       </main>
-      <FooterFrieze />
       <footer className="site-footer">
         <div>© 2026 Manikstu Agri Network · Odisha</div>
       </footer>

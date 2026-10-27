@@ -8,6 +8,7 @@ import { OUTCOMES, TeamData, fmtDuration, isOpenLead, isOverdue, stageName, time
 import { CALL_TARGET_DAILY, callsPerDay, execMetrics, funnel } from '../views/telecallingMetrics';
 import { StatusChip } from '../telecaller/shared';
 import { Assignment, assignmentOf } from '../../lib/trackerOps';
+import CardTable from '../CardTable';
 
 const OUTCOME_CHIP: Record<CallOutcome, string> = {
   Connected: 'delivered', 'No answer': 'transit', Busy: 'pending', 'Wrong number': 'muted', 'Not interested': 'muted',
@@ -154,7 +155,7 @@ export default function CeOverview({ data, assignments, me, queueCount, onStartC
           <h2>My leads</h2>
           <span className="panel-meta">{pipelineTotal} in {verticalName(verticalId).toLowerCase()}</span>
         </div>
-        <div className="filters" style={{ marginBottom: 16 }}>
+        <div className="filters pipeline-tabs" style={{ marginBottom: 16 }}>
           {VERTICALS.map(v => (
             <button key={v.id} className={`filter-chip ${verticalId === v.id ? 'active' : ''}`} onClick={() => setVerticalId(v.id)}>{v.name}</button>
           ))}
@@ -170,7 +171,7 @@ export default function CeOverview({ data, assignments, me, queueCount, onStartC
             {assignedToday.length === 0 ? 'Nothing new yet' : `${assignedToday.length} lead${assignedToday.length === 1 ? '' : 's'} · ${assignedTodayUncalled} not called yet`}
           </span>
         </div>
-        <div className="table-wrap">
+        <CardTable>
           <table className="team-table">
             <thead>
               <tr><th>Lead</th><th>Product</th><th>Source</th><th>Assigned</th><th>Status</th><th></th></tr>
@@ -196,7 +197,7 @@ export default function CeOverview({ data, assignments, me, queueCount, onStartC
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         {assignedToday.length > 8 && (
           <div className="pager"><span>{assignedToday.length - 8} more assigned today</span><button className="link-btn" onClick={onOpenCallbacks}>Open call desk <ArrowRight size={13} /></button></div>
         )}
@@ -208,7 +209,7 @@ export default function CeOverview({ data, assignments, me, queueCount, onStartC
           <h2>My callbacks</h2>
           <button className="link-btn" onClick={onOpenCallbacks}>Open call desk <ArrowRight size={13} /></button>
         </div>
-        <div className="table-wrap">
+        <CardTable>
           <table className="team-table">
             <thead>
               <tr><th>Lead</th><th>Reason</th><th>Due</th><th></th></tr>
@@ -231,7 +232,7 @@ export default function CeOverview({ data, assignments, me, queueCount, onStartC
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
 
       {/* 5. Calls per day */}
@@ -303,7 +304,7 @@ export default function CeOverview({ data, assignments, me, queueCount, onStartC
           <h2>Recent calls</h2>
           <span className="panel-meta">{soldThisMonth.length} sales this month</span>
         </div>
-        <div className="table-wrap">
+        <CardTable titleCol={1}>
           <table className="team-table">
             <thead>
               <tr><th>When</th><th>Lead</th><th>Outcome</th><th>Talk time</th><th>Stage after</th><th>Note</th></tr>
@@ -322,7 +323,7 @@ export default function CeOverview({ data, assignments, me, queueCount, onStartC
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
     </div>
   );

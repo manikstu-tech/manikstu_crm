@@ -10,6 +10,7 @@ import ExportMenu from '../ExportMenu';
 import FarmerDetailsView from './FarmerDetailsView';
 import FarmerProfileImport from './FarmerProfileImport';
 import PieChart, { PieSlice } from '../PieChart';
+import CardTable from '../CardTable';
 
 const EMPTY_LIVESTOCK: Customer['livestock'] = { cows: 0, buffaloes: 0, goats: 0, sheep: 0, poultry: 0 };
 
@@ -308,7 +309,7 @@ export default function RegionalReportView({ orders, onToast }: Props) {
           </div>
         </div>
 
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead>
               <tr><th>Farmer / customer</th><th>Village · town · PIN</th><th className="num-col">Orders</th><th className="num-col">Total spent</th><th>Last order</th><th>Top product</th><th className="num-col">View</th></tr>
@@ -332,7 +333,7 @@ export default function RegionalReportView({ orders, onToast }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="pager">
           <span>{farmerRows.length} farmers</span>
           {pages > 1 && (
@@ -343,7 +344,7 @@ export default function RegionalReportView({ orders, onToast }: Props) {
           )}
         </div>
 
-        <div className="page-toolbar" style={{ justifyContent: 'flex-end', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+        <div className="page-toolbar region-farmer-tools">
           <div className="pill-select">
             <select value={downloadScope} onChange={e => setDownloadScope(e.target.value)} aria-label="Farmers to download">
               <option value="all">All farmers ({farmerRows.length})</option>

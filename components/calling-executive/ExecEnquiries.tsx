@@ -3,6 +3,7 @@ import { MessageCircle, Phone } from 'lucide-react';
 import type { LeadActivity, TrackerLead, WebEnquiry } from '../../data/managerDashboard';
 import { ago, shortDateTime } from '../../lib/format';
 import { StatusChip } from '../telecaller/shared';
+import CardTable from '../CardTable';
 
 // The website enquiries the telecalling head has handed to this executive. Each one is also a lead on the Call desk;
 // calling it from here opens the same calling window, with the customer's message in front of them. Speaking to the
@@ -65,7 +66,7 @@ export default function ExecEnquiries({ enquiries, leads, activities, searchQuer
         <div className="score"><div className="num">{count('replied')}</div><div className="label">Replied</div></div>
       </div>
 
-      <div className="filter-row one-line">
+      <div className="filter-row one-line filter-row-mobile">
         <select className="filter-select" value={filter} onChange={e => setFilter(e.target.value as Filter)} aria-label="Enquiry status">
           <option value="to_call">To call ({count('open')})</option>
           <option value="replied">Replied ({count('replied')})</option>
@@ -74,7 +75,7 @@ export default function ExecEnquiries({ enquiries, leads, activities, searchQuer
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead>
               <tr><th>Customer</th><th>Their message</th><th>Type</th><th>Received</th><th>Status</th><th /></tr>
@@ -116,7 +117,7 @@ export default function ExecEnquiries({ enquiries, leads, activities, searchQuer
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
     </>
   );

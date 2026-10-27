@@ -97,9 +97,56 @@ html.sx-locked, html.sx-locked body { overflow: hidden; }
 }
 .sx-app.sx-no-nav { padding-bottom: 0; }
 
+/* Top navigation bar: the same phone header as the telecalling head and calling executive dashboards. */
+.sx-topnav {
+  padding: calc(12px + var(--sx-safe-top)) max(12px, var(--sx-safe-right)) 12px max(12px, var(--sx-safe-left));
+  background: var(--sx-sage);
+  border-bottom: 1px solid var(--sx-line);
+  border-radius: 0 0 14px 14px;
+}
+.sx-topnav-inner { max-width: var(--sx-max); margin: 0 auto; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 12px; }
+.sx-topnav-logo { justify-self: center; display: flex; align-items: center; min-height: 52px; max-width: 100%; }
+.sx-topnav-logo img { display: block; height: 52px; width: auto; max-width: 100%; }
+.sx-topnav-btn, .sx-topnav-logout .icon-btn {
+  width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--sx-line); border-radius: 10px; background: #fff; color: var(--sx-forest); cursor: pointer;
+}
+.sx-topnav-logout .icon-btn { color: var(--sx-ink); }
+.sx-topnav-logout form { display: flex; }
+.sx-topnav-btn:active, .sx-topnav-logout .icon-btn:active { background: var(--sx-cream); }
+@media (hover: hover) { .sx-topnav-btn:hover, .sx-topnav-logout .icon-btn:hover { border-color: var(--sx-leaf); } }
+/* Behind the phone's status bar once the top bar has scrolled away (installed app on notched phones). */
+.sx-app::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: var(--sx-safe-top); background: var(--sx-sage); z-index: 31; }
+
+/* The ☰ page menu */
+.sx-drawer-layer { position: fixed; inset: 0; z-index: 1000; }
+.sx-drawer-backdrop { position: absolute; inset: 0; background: rgba(20, 30, 20, 0.45); animation: sx-fade 0.2s ease; }
+.sx-drawer {
+  position: absolute; top: 0; left: 0; bottom: 0; width: min(300px, 86vw);
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; outline: none;
+  padding: var(--sx-safe-top) 0 calc(24px + var(--sx-safe-bottom)) var(--sx-safe-left);
+  background: var(--sx-bg); border-right: 1px solid var(--sx-line); box-shadow: 0 8px 30px rgba(23, 40, 31, 0.18);
+  animation: sx-slide-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sx-drawer-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px; padding: 12px 12px 12px 20px; background: inherit; border-bottom: 1px solid var(--sx-line);
+  font-family: var(--sx-serif); font-size: 18px; font-weight: 700; color: var(--sx-ink);
+}
+.sx-drawer-group { margin-bottom: 12px; }
+.sx-drawer-label { padding: 0 20px 6px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sx-ink-2); }
+.sx-drawer-item {
+  display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 1px 10px; padding: 6px 12px 6px 11px;
+  border-left: 3px solid transparent; border-radius: 8px; color: var(--sx-ink); text-decoration: none; font-size: 15px;
+}
+.sx-drawer-item > svg { flex: none; color: var(--sx-forest); }
+.sx-drawer-item:active { background: var(--sx-sage); }
+.sx-drawer-item[aria-current='page'] { background: var(--sx-sage-2); border-left-color: var(--sx-amber); font-weight: 600; }
+.sx-drawer-count { margin-left: auto; padding: 2px 7px; border-radius: 20px; background: #DFE9D4; color: var(--sx-leaf); font-size: 11px; font-weight: 700; }
+@keyframes sx-slide-in { from { transform: translateX(-100%); } }
+
 .sx-header {
-  position: sticky; top: 0; z-index: 30;
-  padding-top: var(--sx-safe-top);
+  position: sticky; top: var(--sx-safe-top); z-index: 30;
   background: rgba(248, 246, 238, 0.94);
   -webkit-backdrop-filter: saturate(1.4) blur(12px);
   backdrop-filter: saturate(1.4) blur(12px);
@@ -118,10 +165,6 @@ html.sx-locked, html.sx-locked body { overflow: hidden; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sx-back { margin-left: -6px; }
-.sx-wordmark-link { flex: 1; min-width: 0; display: flex; align-items: center; height: 44px; }
-.sx-wordmark { height: 34px; width: auto; max-width: 100%; display: block; }
-.sx-emblem-link { display: flex; align-items: center; justify-content: center; width: 40px; height: 44px; flex: none; }
-.sx-emblem-link img { width: 32px; height: 32px; display: block; }
 .sx-header-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex: none; }
 
 .sx-progress {
@@ -297,8 +340,16 @@ html.sx-locked, html.sx-locked body { overflow: hidden; }
 .sx-seg {
   display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
   margin: 0 -16px; padding: 2px 16px; scroll-padding: 0 16px;
+  /* Momentum touch swiping, and smoothly animate the chosen chip into view. */
+  -webkit-overflow-scrolling: touch; scroll-behavior: smooth;
 }
 .sx-seg::-webkit-scrollbar { display: none; }
+/* A two-option toggle (e.g. Orders / By customer): both buttons share the row
+   equally so they are the same width. Phones only; desktop/tablet unchanged. */
+@media (max-width: 599.98px) {
+  .sx-seg.sx-seg-split { overflow-x: visible; margin: 0; padding: 0; }
+  .sx-seg.sx-seg-split > .sx-seg-btn { flex: 1 1 0; min-width: 0; justify-content: center; }
+}
 .sx-seg-btn {
   flex: none; display: inline-flex; align-items: center; gap: 7px;
   min-height: 40px; padding: 0 14px; border-radius: 999px;
@@ -366,6 +417,8 @@ html.sx-locked, html.sx-locked body { overflow: hidden; }
 /* ---------- Home ---------- */
 
 .sx-greet { display: flex; align-items: center; gap: 12px; padding: 2px 2px 0; }
+.sx-greet > div { flex: 1; min-width: 0; }
+.sx-inline-bell { flex: none; margin-right: -6px; }
 .sx-greet-title { font-family: var(--sx-serif); font-size: 22px; line-height: 1.2; color: var(--sx-forest); }
 .sx-greet-sub { margin: 2px 0 0; font-size: 13.5px; color: var(--sx-leaf); font-weight: 600; }
 

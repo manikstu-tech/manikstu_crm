@@ -12,6 +12,7 @@ import { STATUS_LABEL } from './complaintsUtil';
 import {
   STAGE_CHIP, STAGE_FLOW, STAGE_LABEL, TrackStage, Tracking, customerUpdate, stageIndex, trackingFor,
 } from './orderTracking';
+import CardTable from '../CardTable';
 
 type Source = 'all' | 'telecaller' | 'website';
 const PAGE_SIZE = 20;
@@ -213,7 +214,7 @@ export default function TeamOrders({ orders, complaints, searchQuery, onToast }:
       </div>
 
       {/* One filter menu, active filters as tags, export */}
-      <div className="lf-bar">
+      <div className="lf-bar ord-bar">
         <div className="lf-wrap" ref={menuRef}>
           <button className={`lf-trigger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="dialog">
             <SlidersHorizontal size={15} /> Filters
@@ -291,7 +292,7 @@ export default function TeamOrders({ orders, complaints, searchQuery, onToast }:
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable wideCols={[4]}>
           <table className="orders-table">
             <thead>
               <tr><th>Order</th><th>Customer</th><th>Products</th><th className="num-col">Amount</th><th>Tracking</th><th>Courier</th><th>Inform customer</th></tr>
@@ -333,7 +334,7 @@ export default function TeamOrders({ orders, complaints, searchQuery, onToast }:
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         {pages > 1 && (
           <div className="pager">
             <button className="kanban-btn" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>Previous</button>

@@ -49,7 +49,7 @@ export function MoreScreen() {
 
   return (
     <div className="sx-stack">
-      <PageIntro>Your account, money and reports.</PageIntro>
+      <h1 className="sx-visually-hidden">More</h1>
       <AppLink href="/seller/profile" className="sx-profile-card">
         <span className="sx-avatar sx-avatar-lg" aria-hidden>{user.initials}</span>
         <span className="sx-profile-text">
@@ -92,7 +92,6 @@ export function MoreScreen() {
       <Card className="sx-card-flush">
         <ListRow icon={LogOut} label="Log out" danger onClick={logout.open} />
       </Card>
-      <p className="sx-foot-note">Manikstu Seller · version {pkg.version}</p>
       {logout.form}
       {logout.sheet}
     </div>

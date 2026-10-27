@@ -11,6 +11,7 @@ import {
   readFileRows,
 } from '../../lib/leadImport';
 import { isOpenLead, verticalName } from './tcData';
+import CardTable from '../CardTable';
 
 /** A lead ready to be created: everything except the id, which the dashboard assigns. */
 export type NewLead = Omit<TrackerLead, 'id' | 'stage_id' | 'created_at' | 'updated_at'>;
@@ -183,7 +184,7 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
             </div>
           )}
 
-          <div className="table-wrap import-table">
+          <CardTable className="import-table" titleCol={1}>
             <table>
               <thead>
                 <tr><th>Row</th><th>Name</th><th>Phone</th><th>Product</th><th>Source</th><th>Reason</th><th>Assign to</th><th>Status</th></tr>
@@ -203,7 +204,7 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </CardTable>
           <div className="loc" style={{ marginTop: 8 }}>
             Grey product and source text are the defaults above. Skipped rows won’t be created: fix them in the file and import again.
           </div>

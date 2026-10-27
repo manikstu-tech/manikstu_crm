@@ -5,6 +5,7 @@ import { MONTH, shortDate, shortDateTime } from '../../lib/format';
 import { OUTCOMES, fmtDuration, stageName } from '../telecaller/tcData';
 import { StatusChip } from '../telecaller/shared';
 import Modal from '../Modal';
+import CardTable from '../CardTable';
 
 // The calling executive's call reports: every call they have made, with the report they submitted for it (call status,
 // duration, customer response, remarks, follow-up) and whether the telecalling head has verified it or sent it back.
@@ -87,19 +88,34 @@ export default function MyReports({ leads, activities, searchQuery = '', onResub
       </div>
 
       <div className="page-toolbar">
-        <div className="filters">
+        <div className="filters date-chips">
           {PERIODS.map(p => (
             <button key={p} className={`filter-chip ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{p}</button>
           ))}
         </div>
-        <div className="filters">
+        <div className="filters date-chips">
           {(['All', ...OUTCOMES] as const).map(o => (
             <button key={o} className={`filter-chip ${outcome === o ? 'active' : ''}`} onClick={() => setOutcome(o)}>{o}</button>
           ))}
         </div>
+        {/* Phones: period, call status and report as three dropdowns on one row. */}
+        <div className="mr-mobile-filters">
+          <select className="filter-select" value={period} onChange={e => setPeriod(e.target.value as Period)} aria-label="Period">
+            {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <select className="filter-select" value={outcome} onChange={e => setOutcome(e.target.value as CallOutcome | 'All')} aria-label="Call status">
+            {(['All', ...OUTCOMES] as const).map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          <select className="filter-select" value={status} onChange={e => setStatus(e.target.value as ReportStatus | 'all')} aria-label="Report status">
+            <option value="all">All reports ({inPeriod.length})</option>
+            <option value="returned">Sent back to me ({counts.returned})</option>
+            <option value="submitted">Waiting for the head ({counts.submitted})</option>
+            <option value="verified">Verified ({counts.verified})</option>
+          </select>
+        </div>
       </div>
 
-      <div className="filter-row one-line">
+      <div className="filter-row one-line mr-report-row">
         <select className="filter-select" value={status} onChange={e => setStatus(e.target.value as ReportStatus | 'all')} aria-label="Report status">
           <option value="all">All reports ({inPeriod.length})</option>
           <option value="returned">Sent back to me ({counts.returned})</option>
@@ -109,7 +125,7 @@ export default function MyReports({ leads, activities, searchQuery = '', onResub
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable titleCol={1}>
           <table>
             <thead>
               <tr><th>Time</th><th>Customer</th><th>Call status</th><th>Stage</th><th>Customer response</th><th>Remarks</th><th>Follow-up</th><th>Report</th><th /></tr>
@@ -143,7 +159,7 @@ export default function MyReports({ leads, activities, searchQuery = '', onResub
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
 
       <Modal isOpen={editing !== null} onClose={() => setEditing(null)} title={editing ? `Call report: ${leadOf.get(editing.lead_id)?.customer_name ?? ''}` : ''} closeOnBackdrop={false}>

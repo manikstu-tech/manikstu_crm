@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CalendarDays, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, Users, X } from 'lucide-react';
 import { ago } from '../../lib/format';
 import { rangeLabel } from '../../lib/assignedDate';
 import {
@@ -7,6 +7,7 @@ import {
   activityRange, inActivityRange, isLiveTracker, leadFlows, trackerToday, workflowSummary,
 } from '../../lib/leadWorkflow';
 import type { TrackerState } from '../../lib/trackerOps';
+import { initials } from '../views/telecallingMetrics';
 
 /** One of the fixed periods, or a single day picked on the calendar. */
 type Filter = ActivityPeriod | 'custom';
@@ -22,6 +23,42 @@ interface Props {
 
 /** Executives per page; the Team total always stays pinned below, outside the paging. */
 const PAGE_SIZE = 3;
+
+/** The figures on each phone card, as in the reference design: the main four in large numbers, then six smaller ones. */
+type StatRow = Pick<ExecWorkflow, 'assigned' | 'notCalled' | 'calls' | 'connected' | 'notConnected' | 'wrongNumber' | 'notInterested' | 'awaiting' | 'verified' | 'returned'>;
+type Stat = { label: string; value: (r: StatRow) => number; warn?: boolean };
+const MAIN_STATS: Stat[] = [
+  { label: 'Calls', value: r => r.calls },
+  { label: 'Connected', value: r => r.connected },
+  { label: 'To verify', value: r => r.awaiting },
+  { label: 'Not called', value: r => r.notCalled, warn: true },
+];
+const MORE_STATS: Stat[] = [
+  { label: 'Assigned', value: r => r.assigned },
+  { label: 'Not connected', value: r => r.notConnected },
+  { label: 'Wrong no.', value: r => r.wrongNumber },
+  { label: 'Reports sent', value: r => r.calls },
+  { label: 'Verified', value: r => r.verified },
+  { label: 'Returned', value: r => r.returned, warn: true },
+];
+
+/** Phone card figures. Warn: numbers above zero in red, as in the table. */
+function CardStats({ row, warn }: { row: StatRow; warn: boolean }) {
+  const band = (cls: string, stats: Stat[]) => (
+    <span className={cls}>
+      {stats.map(st => {
+        const v = st.value(row);
+        return (
+          <span key={st.label} className="xd-stat">
+            <span className="k">{st.label}</span>
+            <span className={`v ${warn && st.warn && v > 0 ? 'text-warn' : ''}`}>{v}</span>
+          </span>
+        );
+      })}
+    </span>
+  );
+  return <>{band('xd-main', MAIN_STATS)}{band('xd-more', MORE_STATS)}</>;
+}
 
 /**
  * Executive-wise distribution and progress — assigned/called/report numbers per
@@ -80,9 +117,14 @@ export default function ExecDistributionTable({ summary, state, onSelectExec }: 
     ? { assigned: total(e => e.assigned), notCalled: total(e => e.notCalled), calls: total(e => e.calls), awaiting: total(e => e.awaiting), verified: total(e => e.verified), returned: total(e => e.returned) }
     : { assigned: summary.distributed, notCalled: summary.notCalled, calls: summary.completedCalls, awaiting: summary.awaitingVerification, verified: summary.verified, returned: summary.returned };
   const noCallsText = !range ? 'No calls yet' : `No calls ${label}`;
+  const teamStats: StatRow = {
+    assigned: team.assigned, notCalled: team.notCalled, calls: team.calls,
+    connected: total(e => e.connected), notConnected: total(e => e.notConnected), wrongNumber: total(e => e.wrongNumber),
+    notInterested: total(e => e.notInterested), awaiting: team.awaiting, verified: team.verified, returned: team.returned,
+  };
   return (
-    <div className="panel">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '10px 14px 4px' }}>
+    <div className="panel exec-dist">
+      <div className="exec-dist-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '10px 14px 4px' }}>
         <div>
           <div id="exec-dist-title" style={{ fontWeight: 600 }}>Executive-wise distribution and progress</div>
           {range && <div className="loc">Leads assigned and calls made {label} (India time).</div>}
@@ -110,7 +152,7 @@ export default function ExecDistributionTable({ summary, state, onSelectExec }: 
           </div>
         )}
       </div>
-      <div className="table-wrap">
+      <div className="table-wrap xd-table">
         <table aria-labelledby="exec-dist-title">
           <thead>
             <tr>
@@ -166,6 +208,54 @@ export default function ExecDistributionTable({ summary, state, onSelectExec }: 
           </tbody>
         </table>
       </div>
+      {/* Phones: one card per executive (the table above is hidden there), then the team total. */}
+      <ul className="xd-cards" aria-label="Executive-wise distribution and progress">
+        {shown.map(e => {
+          const content = (
+            <>
+              <span className="xd-head">
+                <span className="xd-avatar" aria-hidden>{initials(e.name)}</span>
+                <span className="xd-who">
+                  <span className="xd-name">{e.name}</span>
+                  <span className={`chip ${e.active ? 'delivered' : 'muted'} xd-status`}>{e.active ? 'Active' : 'Inactive'}</span>
+                </span>
+                {onSelectExec && <ChevronRight size={20} className="xd-chev" aria-hidden />}
+              </span>
+              <CardStats row={e} warn />
+              <span className="xd-foot">
+                <span className="xd-progress">
+                  <span className="k">Progress</span>
+                  <span className="v">{e.assigned === 0 && periodRows ? 'No new leads' : `${e.progressPct}% called`}</span>
+                  <span className="xd-bar" aria-hidden><span style={{ width: `${e.progressPct}%` }} /></span>
+                </span>
+                <span className="xd-last">
+                  <CalendarDays size={20} className="xd-last-icon" aria-hidden />
+                  <span className="xd-last-text">
+                    <span className="k">Last call</span>
+                    <span className="v">{e.lastCallAt ? ago(e.lastCallAt) : noCallsText}</span>
+                  </span>
+                </span>
+              </span>
+            </>
+          );
+          return (
+            <li key={e.id}>
+              {onSelectExec
+                ? <button type="button" className="xd-card" onClick={() => onSelectExec(e.id)} title="Show this executive's leads below">{content}</button>
+                : <div className="xd-card">{content}</div>}
+            </li>
+          );
+        })}
+        <li>
+          <div className="xd-card xd-team">
+            <span className="xd-head">
+              <span className="xd-avatar" aria-hidden><Users size={20} /></span>
+              <span className="xd-who"><span className="xd-name">Team</span></span>
+            </span>
+            <CardStats row={teamStats} warn={false} />
+          </div>
+        </li>
+      </ul>
       {pageCount > 1 && (
         <div className="pager">
           <span className="loc">{execRows.length} executives · showing {safePage * PAGE_SIZE + 1}–{Math.min(execRows.length, safePage * PAGE_SIZE + PAGE_SIZE)}</span>

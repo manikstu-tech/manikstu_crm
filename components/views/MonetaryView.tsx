@@ -1,5 +1,6 @@
 import React from 'react';
 import { Transaction } from '../../data/initialData';
+import CardTable from '../CardTable';
 
 interface MonetaryViewProps {
   transactions: Transaction[];
@@ -71,7 +72,7 @@ export default function MonetaryView({ transactions, onApproveTransaction }: Mon
           <div className="panel-head">
             <h2>Recent Transactions & Payouts</h2>
           </div>
-          <div className="table-wrap">
+          <CardTable>
             <table>
               <thead>
                 <tr>
@@ -113,7 +114,7 @@ export default function MonetaryView({ transactions, onApproveTransaction }: Mon
                 ))}
               </tbody>
             </table>
-          </div>
+          </CardTable>
         </div>
       </div>
     </>

@@ -5,6 +5,7 @@ import { AUDIENCES, AudienceKey, Campaign, Recipient, TEMPLATES, fillTemplate, w
 import { daysBefore, nowStamp, shortDate } from '../../lib/format';
 import { ExportFormat, exportTable } from '../../lib/export';
 import { TeamData, callerName, isOpenLead, stageName, stageOf, verticalName } from './tcData';
+import CardTable from '../CardTable';
 
 const QUEUE_PAGE = 12;
 const CONTACT_PAGE = 10;
@@ -391,7 +392,7 @@ export default function TeamMarketing({ data, orders, campaigns, onCampaignsChan
             </div>
           </div>
         </div>
-        <div className="table-wrap">
+        <CardTable>
           <table className="orders-table">
             <thead>
               <tr><th>Name</th><th>Phone</th><th>Came from</th><th>Latest</th><th className="num-col">Send</th></tr>
@@ -416,7 +417,7 @@ export default function TeamMarketing({ data, orders, campaigns, onCampaignsChan
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         {contactPages > 1 && (
           <div className="pager">
             <span className="loc">Page {safeContactPage + 1} of {contactPages}</span>

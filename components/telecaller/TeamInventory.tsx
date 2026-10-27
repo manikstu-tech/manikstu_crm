@@ -13,6 +13,7 @@ import { EmptyRow } from './shared';
 import { STATUS_LABEL } from './complaintsUtil';
 import { STAGE_LABEL, trackingFor } from './orderTracking';
 import { STOCK_CHIP, STOCK_LABEL, StockRow, StockStatus, isSlow, runsOutSoon, stockRows } from './inventoryUtil';
+import CardTable from '../CardTable';
 
 type Sort = 'urgent' | 'name' | 'available' | 'sold' | 'value';
 
@@ -140,14 +141,20 @@ export default function TeamInventory({ orders, complaints, searchQuery, onToast
         })}
       </div>
 
-      <div className="page-toolbar">
-        <div className="filters">
+      <div className="page-toolbar stock-toolbar">
+        <div className="filters date-chips">
           {(['all', 'in', 'low', 'out'] as const).map(s => (
             <button key={s} className={`filter-chip ${!attn && status === s ? 'active' : ''}`} onClick={() => { setStatus(s); setAttention(null); }}>
               {s === 'all' ? 'All' : STOCK_LABEL[s]} ({s === 'all' ? rows.length : count(s)})
             </button>
           ))}
         </div>
+        {/* Phones: the stock status filters become one dropdown. */}
+        <select className="filter-select phone-select" value={status} onChange={e => { setStatus(e.target.value as StockStatus | 'all'); setAttention(null); }} aria-label="Stock status">
+          {(['all', 'in', 'low', 'out'] as const).map(s => (
+            <option key={s} value={s}>{s === 'all' ? 'All' : STOCK_LABEL[s]} ({s === 'all' ? rows.length : count(s)})</option>
+          ))}
+        </select>
         <div className="toolbar-actions">
           <select className="filter-select" value={category} onChange={e => setCategory(e.target.value)} aria-label="Category">
             <option value="all">All categories</option>
@@ -169,7 +176,7 @@ export default function TeamInventory({ orders, complaints, searchQuery, onToast
       </div>
 
       <div className="panel" style={{ marginBottom: 20 }}>
-        <div className="table-wrap">
+        <CardTable>
           <table className="orders-table stock-table">
             <thead>
               <tr>
@@ -209,7 +216,7 @@ export default function TeamInventory({ orders, complaints, searchQuery, onToast
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="panel-note">
           Available = in stock minus units in orders not yet shipped. Days left = available ÷ average daily sales over 30 days.
           Stock figures are sample data until the backend&apos;s stock_quantity is connected.

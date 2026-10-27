@@ -21,6 +21,7 @@ import AssignEnquiryModal from './AssignEnquiryModal';
 import ImportEnquiries from './ImportEnquiries';
 import type { NewEnquiryData } from '../../lib/trackerOps';
 import { stageName } from '../telecaller/tcData';
+import CardTable from '../CardTable';
 
 interface EnquiriesViewProps {
   enquiries: WebEnquiry[];
@@ -348,7 +349,7 @@ export default function EnquiriesView({
       </div>
 
       {/* 3. One filter menu, tags, search, import / export */}
-      <div className="lf-bar">
+      <div className="lf-bar enq-bar">
         <div className="lf-wrap" ref={menuRef}>
           <button className={`lf-trigger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="dialog">
             <SlidersHorizontal size={15} /> Filters
@@ -425,7 +426,7 @@ export default function EnquiriesView({
 
       {/* 5. Inbox */}
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table className="orders-table enquiries-table">
             <thead>
               <tr>
@@ -492,7 +493,7 @@ export default function EnquiriesView({
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="pager">
           <span>{filtered.length === 0 ? '0 enquiries' : `${safePage * PAGE_SIZE + 1}–${Math.min(filtered.length, (safePage + 1) * PAGE_SIZE)} of ${filtered.length} enquiries`}</span>
           <div className="pager-btns">

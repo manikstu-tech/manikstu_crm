@@ -10,8 +10,11 @@ import ExecDistributionTable from './ExecDistributionTable';
 import type { WorkflowSummary } from '../../lib/leadWorkflow';
 import { assignmentOf, type TrackerState } from '../../lib/trackerOps';
 import { ASSIGNED_DATE_OPTIONS, AssignedDateKey, DayRange, assignedRange, customRangeError, inDayRange, istToday, rangeLabel } from '../../lib/assignedDate';
+import CardTable from '../CardTable';
 
 type Tab = 'open' | 'new-imports' | 'untouched' | 'completed' | 'all';
+/** The status the page opens on. It isn't shown as a filter tag: only statuses picked after that are. */
+const START_TAB: Tab = 'open';
 const PAGE_SIZE = 20;
 
 interface Props {
@@ -31,7 +34,7 @@ interface Props {
 /** Import leads and hand them out to the calling executives. */
 export default function TeamLeads({ data, execSummary, trackerState, searchQuery, initialCaller, onReassign, onImport, onToast }: Props) {
   const [importOpen, setImportOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>('open');
+  const [tab, setTab] = useState<Tab>(START_TAB);
   const [caller, setCaller] = useState<number | 'all'>(initialCaller ?? 'all');
   const [source, setSource] = useState('all');
   const [page, setPage] = useState(0);
@@ -153,7 +156,7 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
   // Active filters, shown as removable tags
   const clearFilters = () => { setTab('all'); setCaller('all'); setSource('all'); reset(); };
   const tags = [
-    tab !== 'all' && { key: 'status', k: 'Status', v: TABS.find(t => t.key === tab)!.label, clear: () => { setTab('all'); reset(); } },
+    tab !== 'all' && tab !== START_TAB && { key: 'status', k: 'Status', v: TABS.find(t => t.key === tab)!.label, clear: () => { setTab('all'); reset(); } },
     caller !== 'all' && { key: 'caller', k: 'Executive', v: callerName(caller), clear: () => { setCaller('all'); reset(); } },
     source !== 'all' && { key: 'source', k: 'Source', v: source, clear: () => { setSource('all'); reset(); } },
   ].filter(Boolean) as { key: string; k: string; v: string; clear: () => void }[];
@@ -294,7 +297,7 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
       )}
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table className="orders-table">
             <thead>
               <tr>
@@ -326,7 +329,7 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="pager">
           <span>{filtered.length === 0 ? '0 leads' : `${safePage * PAGE_SIZE + 1}–${Math.min(filtered.length, (safePage + 1) * PAGE_SIZE)} of ${filtered.length} leads · newest first`}</span>
           <div className="pager-btns">

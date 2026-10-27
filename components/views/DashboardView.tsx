@@ -17,6 +17,7 @@ import {
 } from '../../data/managerDashboard';
 import { MONTH, ORDER_CHIP, ago, dayStart, daysBefore, nowStamp, pct, rupees, rupeesShort, shortDate } from '../../lib/format';
 import HBarList from '../HBarList';
+import CardTable from '../CardTable';
 
 interface DashboardViewProps {
   orders: SalesOrder[];
@@ -185,7 +186,7 @@ export default function DashboardView({ orders, leads, followups, activities, on
           <h2>Lead Pipeline</h2>
           <span className="panel-meta">{pipelineTotal} leads · {pct(pipelineWon, pipelineTotal)}% won</span>
         </div>
-        <div className="filters" style={{ marginBottom: 16 }}>
+        <div className="filters pipeline-tabs" style={{ marginBottom: 16 }}>
           {VERTICALS.map(v => (
             <button
               key={v.id}
@@ -461,7 +462,7 @@ export default function DashboardView({ orders, leads, followups, activities, on
         <div className="panel-head">
           <h2>Telecaller Performance</h2>
         </div>
-        <div className="table-wrap">
+        <CardTable>
           <table className="team-table">
             <thead>
               <tr>
@@ -495,7 +496,7 @@ export default function DashboardView({ orders, leads, followups, activities, on
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="panel-note">Sales, revenue and follow-ups are for this month. Conversion is sold leads ÷ all assigned leads.</div>
       </div>
 
@@ -518,7 +519,7 @@ export default function DashboardView({ orders, leads, followups, activities, on
             {unpaid.length} orders unpaid · {rupees(unpaid.reduce((a, o) => a + o.total, 0))} to collect
           </div>
         )}
-        <div className="table-wrap">
+        <CardTable>
           <table>
             <thead>
               <tr>
@@ -544,7 +545,7 @@ export default function DashboardView({ orders, leads, followups, activities, on
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
     </div>
   );

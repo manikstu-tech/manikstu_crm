@@ -75,14 +75,6 @@ button {
   transition: background-color 0.25s ease;
 }
 
-/* Faded village scene at the foot of the page */
-.frieze.village-footer {
-  height: 140px;
-  background: url('/patterns/village-scene.png') repeat-x center bottom -30px / auto 200px;
-  mix-blend-mode: multiply;
-  opacity: 0.55;
-}
-
 /* Masthead */
 .masthead-bar {
   background: var(--forest);
@@ -2222,6 +2214,9 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
 .pie-value { font-weight: 600; font-size: 12.5px; }
 .pie-share { font-size: 12px; color: var(--ink-soft); text-align: right; }
 @media (max-width: 768px) { .region-arrow, .region-divider { display: none; } }
+/* Phones: when the pie stacks above its legend, centre the circle instead of
+   leaving it against the left edge. (Desktop keeps the pie beside the legend.) */
+@media (max-width: 768px) { .pie-chart { justify-content: center; } }
 
 /* ---- Enquiries import (telecalling head) ------------------------------------------------ */
 .import-btn { display: inline-flex; align-items: center; gap: 6px; }
@@ -2297,7 +2292,6 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
 .card-layout .nav-item.active .nav-icon { color: var(--forest); }
 .card-layout .main { padding: 16px 24px 0; }
 .card-layout .main > .site-footer { padding: 28px 0 8px; }
-.card-layout .main > .frieze { width: auto; margin: 0 -24px; } /* runs edge to edge of the content column */
 
 .topbar-sticky { position: sticky; top: 0; z-index: 40; margin-top: -16px; padding-top: 16px; background: var(--page-bg); }
 .topbar-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--card-bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 16px; }
@@ -2380,8 +2374,6 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--leaf); }
   .card-layout .shell { flex-direction: column; align-items: stretch; padding: 12px; gap: 12px; }
   .card-layout .sidebar { display: flex; position: static; width: auto; min-width: 0; max-width: 100%; flex: none; height: auto; padding: 16px 0 12px; border: 1px solid var(--line); border-radius: 12px; }
   .card-layout .main { padding: 0; }
-  /* Decorative bands bleed to the shell's 12px gutter, not the desktop 24px (which caused sideways page scroll). */
-  .card-layout .main > .frieze { margin: 0 -12px; }
   /* Full-bleed header card: edge to edge, logo centred */
   .card-layout .sidebar { align-self: stretch; margin: -12px -12px 0; width: auto; max-width: none; border-width: 0 0 1px; border-radius: 0 0 14px 14px; padding: 14px 0 12px; }
   .sidebar-brand { padding: 0 16px 12px; margin-bottom: 12px; display: flex; justify-content: center; }
@@ -2865,7 +2857,9 @@ button.score-btn .num svg { vertical-align: -2px; margin-right: 4px; opacity: 0.
   .filter-chip, .lf-pill, .view-btn { min-height: 38px; display: inline-flex; align-items: center; }
   .pill-select select { min-height: 40px; }
   .icon-btn { width: 42px; height: 42px; }
-  .filter-select { min-height: 42px; }
+  /* Selects and text inputs share one tap-target height so paired fields
+     (e.g. a product dropdown beside a name input) line up on phones. */
+  .filter-select, .filter-input { min-height: 46px; }
 
   /* Tighter, better-aligned page heading */
   .page-head { margin: 16px 2px 14px; }
@@ -3027,3 +3021,886 @@ button.score-btn .num svg { vertical-align: -2px; margin-right: 4px; opacity: 0.
 .business-dashboard.bd-regions-all .bd-top tbody td:nth-child(4) { font-weight: 700; color: var(--ink); }
 .business-dashboard.bd-regions-all .bd-top tfoot th, .business-dashboard.bd-regions-all .bd-top tfoot td { font-weight: 700; color: var(--ink); text-align: right; }
 .business-dashboard.bd-regions-all .bd-top tfoot th { text-align: left; text-transform: none; letter-spacing: 0; font-size: 13.5px; }
+/* ============================================================================
+   Phones: bottom navigation for the telecalling head and calling executive
+   dashboards (components/BottomNav.tsx), styled like the seller app's bar.
+   Desktop and tablets above 768px never show it.
+   ========================================================================== */
+.bottom-nav { display: none; }
+/* Telecalling head and calling executive dashboards have no page footer: keep space under the last card. */
+.card-layout.has-bottom-nav .main { padding-bottom: 24px; }
+@media (max-width: 768px) { .card-layout.has-bottom-nav .main { padding-bottom: 12px; } }
+
+@media (max-width: 768px) {
+  .card-layout.has-bottom-nav { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .bottom-nav {
+    display: block;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 80; /* under the page menu (90/100), drawers and dialogs */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(255, 255, 255, 0.97);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 18px rgba(23, 40, 31, 0.06);
+  }
+  .bottom-nav-inner { max-width: 560px; height: 64px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .bottom-nav-item {
+    min-width: 0; padding: 0 2px; border: 0; background: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: var(--ink-soft); font-family: inherit; font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
+  }
+  .bottom-nav-icon {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    width: 58px; height: 30px; border-radius: 999px; transition: background-color 0.18s;
+  }
+  .bottom-nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bottom-nav-item.active { color: var(--forest); }
+  .bottom-nav-item.active .bottom-nav-icon { background: var(--side-active); }
+  .bottom-nav-item.active .bottom-nav-label { font-weight: 700; }
+  .bottom-nav-item:active .bottom-nav-icon { background: var(--sage); }
+  .bottom-nav-item:focus-visible { outline: none; }
+  .bottom-nav-item:focus-visible .bottom-nav-icon { outline: 2.5px solid var(--forest); outline-offset: 1px; }
+  .bottom-nav-badge {
+    position: absolute; top: -4px; left: 34px;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; border: 2px solid #fff;
+    background: var(--rust); color: #fff; font-size: 10.5px; font-weight: 700; line-height: 14px; text-align: center;
+  }
+  /* Messages appear above the bar, not behind it. */
+  .has-bottom-nav .toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) { .bottom-nav-icon { transition: none; } }
+
+/* Telecalling head · Team overview: date range and region dropdowns side by side, on phones too. */
+.overview-filters { flex-wrap: nowrap; }
+@media (max-width: 640px) {
+  .overview-filters { width: 100%; }
+  .overview-filters > .filter-select { flex: 1 1 0; min-width: 0; }
+}
+
+/* Telecalling head · Team overview: the Telecalling Team table becomes cards on phones.
+   Desktop keeps the table exactly as it was (the cards are not shown there). */
+.team-cards-wrap { display: none; }
+/* Desktop: only Export shows in the panel head; the "Sort by" control is for the phone cards. */
+.team-head-tools { display: flex; align-items: center; gap: 12px; }
+.team-cards-sort { display: none; }
+@media (max-width: 768px) {
+  .team-roster-table { display: none; }
+  .team-cards-wrap { display: block; }
+  /* Phones: the title on its own line, then "Sort by" and Export together on the next line. */
+  .team-panel-head { flex-wrap: wrap; align-items: center; }
+  .team-panel-head > h2 { flex: 1 1 100%; margin-bottom: 12px; }
+  .team-panel-head > .team-head-tools { flex: 1 1 100%; min-width: 0; justify-content: space-between; gap: 10px; }
+  .team-cards-sort { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+  .team-cards-sort > span { white-space: nowrap; }
+  .team-cards-sort .filter-select { flex: 1 1 0; min-width: 0; max-width: 220px; }
+  .team-head-tools > .export-menu { flex: none; }
+  .team-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .team-card {
+    width: 100%; display: flex; flex-direction: column; gap: 14px; padding: 14px;
+    border: 1px solid var(--line); border-radius: 14px; background: var(--card-bg); box-shadow: 0 1px 2px rgba(38, 53, 46, 0.04);
+    font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+  }
+  .team-card.needs-attention { background: color-mix(in srgb, #A6532E 5%, var(--card-bg)); }
+  .team-card:active { background: color-mix(in srgb, var(--forest) 5%, var(--card-bg)); }
+  .team-card:focus-visible { outline: 2.5px solid var(--forest); outline-offset: 2px; }
+  .team-card-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .team-card-avatar {
+    flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--gold); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;
+  }
+  .team-card-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .team-card-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .team-card-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 700; }
+  .team-card .chip { flex: none; margin: 0; font-size: 10.5px; padding: 1px 8px; }
+  .team-card-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: var(--ink-soft); }
+  .team-card-chev { flex: none; color: var(--ink-soft); }
+  /* Wider columns for the longer labels, so "Open Leads" and "Follow Up" fit in full down to 360px. */
+  .team-card-stats { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.05fr); }
+  .team-card-stats > span { min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 0 6px; border-left: 1px solid var(--line); }
+  .team-card-stats > span:first-child { padding-left: 0; border-left: 0; }
+  .team-card-stats .k { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--ink-soft); }
+  .team-card-stats .v { white-space: nowrap; font-size: 16px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+}
+
+/* Telecalling head · Follow-ups: the follow-up table becomes cards on phones.
+   Desktop keeps the table exactly as it was (the cards are not shown there). */
+.fu-cards-wrap { display: none; }
+@media (max-width: 768px) {
+  .fu-table-wrap { display: none; }
+  .fu-cards-wrap { display: block; }
+  .fu-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .fu-card {
+    min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 14px;
+    border: 1px solid var(--line); border-radius: 14px; background: var(--card-bg); box-shadow: 0 1px 2px rgba(38, 53, 46, 0.04);
+  }
+  .fu-card.overdue { box-shadow: inset 3px 0 0 var(--rust), 0 1px 2px rgba(38, 53, 46, 0.04); }
+  .fu-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-width: 0; }
+  .fu-card-who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .fu-card-name { font-size: 15px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+  .fu-card-sub { font-size: 12.5px; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .fu-card-head > .chip { flex: none; }
+  .fu-card-rows { display: flex; flex-direction: column; gap: 8px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+  .fu-card-rows > div { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 13.5px; }
+  .fu-card-rows dt { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+  .fu-card-rows dd { margin: 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--ink); overflow-wrap: anywhere; }
+  .fu-card-rows dd .fu-late { margin-top: 0; }
+  .fu-card-rows dd .loc { flex-basis: 100%; }
+  .fu-card-rows dd .chip { flex: none; }
+  .fu-card-picker { width: 100%; min-height: 44px; padding: 0 12px; border-radius: 10px; font-size: 14px; }
+  .fu-cards-empty { margin: 0; padding: 24px 0; text-align: center; color: var(--ink-soft); }
+}
+
+/* ==========================================================================
+   Phones: wide tables become cards (components/CardTable.tsx), in the style of
+   the Telecalling Team cards above. Only tables wrapped in <CardTable> change,
+   and only at 768px and below: desktop and tablets keep the table as it was.
+   CardTable puts each cell's column name in data-label and its role in data-mc:
+   title, chip (top-right badge), check / rank (left of the title), num (a figure),
+   wide (whole card width), act (buttons, at the bottom of the card).
+   ========================================================================== */
+@media (max-width: 768px) {
+  .table-wrap.m-cards { overflow: visible; }
+  .m-cards > table { display: block; width: 100%; min-width: 0 !important; }
+  .m-cards > table > caption { display: block; padding: 0 0 12px !important; }
+
+  /* Header: hidden, except sort buttons and "select all", which stay above the cards. */
+  .m-cards > table > thead { display: none; }
+  .m-cards > table > thead[data-mc-tools] { display: block; margin: -2px 0 12px; }
+  .m-cards > table > thead[data-mc-tools] > tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .m-cards > table > thead[data-mc-tools] > tr:not(:last-child) { display: none; }
+  .m-cards > table > thead[data-mc-tools="sort"] > tr::before {
+    content: 'Sort by'; margin-right: 2px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+  }
+  .m-cards > table > thead th { display: none; }
+  .m-cards > table > thead th[data-mc-tool] {
+    display: flex; align-items: center; gap: 8px; width: auto !important; padding: 0; border: 0;
+    position: static; box-shadow: none; background: none; text-transform: none; letter-spacing: 0; white-space: nowrap;
+  }
+  .m-cards > table > thead th[data-mc-tool-label]::after { content: attr(data-mc-tool-label); font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+  .m-cards > table > thead th[data-mc-tool] input[type="checkbox"] { width: 20px; height: 20px; margin: 0; }
+  .m-cards > table > thead th[data-mc-tool] .sort-btn {
+    display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--card-bg);
+    font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+  }
+  .m-cards > table > thead th[data-mc-tool] .sort-btn.active { border-color: var(--forest); background: var(--side-active); color: var(--forest); }
+
+  /* Rows: one card each. The head (tick box or rank, title, status chip) has a line to itself;
+     the other cells follow two to a row, figures three to a row in tables of figures. */
+  .m-cards > table > tbody, .m-cards > table > tfoot { display: flex; flex-direction: column; gap: 10px; }
+  .m-cards > table > tfoot { margin-top: 10px; }
+  .m-cards > table > tbody > tr:not([data-mc]), .m-cards > table > tfoot > tr:not([data-mc]) {
+    display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 12px;
+    padding: 14px; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--card-bg); box-shadow: 0 1px 2px rgba(38, 53, 46, 0.04);
+  }
+  .m-cards > table > tbody > tr:not([data-mc])::after, .m-cards > table > tfoot > tr:not([data-mc])::after { content: ''; order: -1; flex: 0 0 100%; height: 0; }
+  .m-cards > table > tbody > tr:not([data-mc]) > *, .m-cards > table > tfoot > tr:not([data-mc]) > * {
+    flex: 0 0 calc(50% - 6.5px); display: block; margin-top: 8px;
+    min-width: 0 !important; width: auto !important; max-width: none !important; height: auto !important;
+    padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important;
+    position: static !important; text-align: left !important; white-space: normal !important;
+    font-size: 13.5px; overflow-wrap: anywhere;
+  }
+  /* Column name above each value. */
+  .m-cards > table > tbody > tr:not([data-mc]) > *::before, .m-cards > table > tfoot > tr:not([data-mc]) > *::before {
+    content: attr(data-label); display: block; margin-bottom: 4px;
+    font-size: 11.5px; font-weight: 600; line-height: 1.3; color: var(--ink-soft); text-transform: none; letter-spacing: 0;
+  }
+  .m-cards tr:not([data-mc]) > :is(:not([data-label]), [data-label=""], [data-mc="title"], [data-mc="chip"], [data-mc="check"], [data-mc="rank"])::before { content: none; display: none; }
+  .m-cards tr:not([data-mc]) > [data-mc-empty] { display: none !important; }
+
+  /* Card head: [tick box / rank] title [status chip] */
+  .m-cards tr:not([data-mc]) > :is([data-mc="title"], [data-mc="chip"], [data-mc="check"], [data-mc="rank"]) { margin-top: 0; }
+  /* The title keeps at least 55% of the line; a long status chip moves under it instead of squeezing it. */
+  .m-cards tr:not([data-mc]) > [data-mc="title"] { flex: 1 1 0; min-width: 55% !important; order: -2; font-size: 15px; font-weight: 700; }
+  .m-cards tr:not([data-mc]) > [data-mc="title"] .loc { margin-top: 2px; font-size: 12.5px; font-weight: 400; color: var(--ink-soft); }
+  .m-cards tr:not([data-mc]) > [data-mc="chip"] { flex: 0 1 auto; max-width: 100% !important; margin-left: auto; order: -1; text-align: right !important; overflow-wrap: normal; }
+  .m-cards tr:not([data-mc]) > [data-mc="chip"] .chip { margin: 0; white-space: nowrap; }
+  .m-cards tr:not([data-mc]) > :is([data-mc="check"], [data-mc="rank"]) { flex: none; order: -3; display: flex; align-items: center; justify-content: center; }
+  .m-cards tr:not([data-mc]) > [data-mc="check"] { min-height: 22px; }
+  .m-cards tr:not([data-mc]) > [data-mc="check"] input[type="checkbox"] { width: 20px; height: 20px; margin: 0; }
+  /* The rank in a small circle, where the Telecalling Team card has its avatar. */
+  .m-cards tr:not([data-mc]) > [data-mc="rank"] {
+    width: 30px !important; height: 30px !important; border-radius: 50%;
+    background: var(--sage) !important; color: var(--ink); font-size: 13px; font-weight: 700;
+  }
+  .m-cards tr:not([data-mc]) > [data-mc="rank"]:has(.rank-badge) { background: none !important; }
+  .m-cards tr:not([data-mc]) > [data-mc="rank"] .rank-badge { width: 30px; height: 30px; font-size: 13px; }
+
+  /* Figures: bold, like the Telecalling Team stats. In tables of figures they come first, three to a row. */
+  .m-cards tr:not([data-mc]) > [data-mc="num"] { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .m-cards tr:not([data-mc]) > [data-mc="num"] .loc { font-size: 12px; font-weight: 400; }
+  .m-cards table[data-mc-stats] tr:not([data-mc]) > [data-mc="num"] { flex-basis: calc((100% - 24px) / 3 - 0.5px); order: 1; }
+  .m-cards table[data-mc-stats] tr:not([data-mc]) > :is(:not([data-mc]), [data-mc="wide"]) { order: 2; }
+  .m-cards tr:not([data-mc]) > [data-mc="wide"] { flex-basis: 100%; }
+
+  /* Buttons and links: the last line of the card. */
+  .m-cards tr:not([data-mc]) > [data-mc="act"] { flex-basis: 100%; order: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .m-cards tr:not([data-mc]) > [data-mc="act"]::before { margin: 0 2px 0 0; }
+  .m-cards tr:not([data-mc]) > [data-mc="act"] > * { margin: 0 !important; }
+  .m-cards tr:not([data-mc]) > [data-mc="act"] :is(select, .filter-select) { flex: 1 1 100%; width: 100%; min-height: 42px; }
+
+  /* Row states the table showed with a tint. */
+  .m-cards tr:is(.row-alert, .fu-row-overdue):not([data-mc]) { background: color-mix(in srgb, #A6532E 5%, var(--card-bg)); }
+  .m-cards tr.fu-row-overdue:not([data-mc]) { box-shadow: inset 3px 0 0 var(--rust), 0 1px 2px rgba(38, 53, 46, 0.04); }
+  .m-cards tr.row-selected:not([data-mc]) { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 8%, var(--card-bg)); }
+  .m-cards tr.row-unread:not([data-mc]) { background: color-mix(in srgb, var(--forest) 5%, var(--card-bg)); }
+  .m-cards tr.row-skipped:not([data-mc]) > * { color: var(--ink-soft); }
+  .m-cards tr.clickable:not([data-mc]):active { background: color-mix(in srgb, var(--forest) 5%, var(--card-bg)); }
+
+  /* Single-cell rows (an empty-list message, a group heading) span the list. */
+  .m-cards tr[data-mc="plain"] { display: block; }
+  .m-cards tr[data-mc="plain"] > * { display: block; width: auto !important; border: 0; box-shadow: none; }
+}
+
+/* Phones: import previews keep their own scroll box, now scrolling up and down through cards. */
+@media (max-width: 768px) {
+  .table-wrap.m-cards.import-table { overflow: hidden auto; padding: 10px; }
+}
+
+/* ==========================================================================
+   Phones: Complaints (telecalling head). Desktop and tablets are unchanged.
+   ========================================================================== */
+@media (max-width: 640px) {
+  /* Needs action: two cards a row, icon and number on top, the label below with the full card width. */
+  .cmp-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cmp-actions .oj-action {
+    grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'icon n' 'label label';
+    align-items: center; align-content: start; gap: 6px 8px; padding: 10px 12px; min-height: 72px;
+  }
+  .cmp-actions .oj-action > svg { grid-area: icon; }
+  .cmp-actions .oj-action-n { grid-area: n; font-size: 19px; }
+  .cmp-actions .oj-action-label { grid-area: label; font-size: 12.5px; line-height: 1.3; overflow-wrap: break-word; }
+}
+@media (max-width: 768px) {
+  /* Filters, New complaint and Export on one row; active filter tags and the count each on their own line below. */
+  .cmp-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px 8px; }
+  .cmp-bar > .lf-wrap { grid-row: 1; grid-column: 1; }
+  .cmp-bar > .cmp-new { grid-row: 1; grid-column: 2; min-width: 0; justify-content: center; }
+  .cmp-bar > .export-menu { grid-row: 1; grid-column: 3; }
+  .cmp-bar > .lf-tags { grid-column: 1 / -1; }
+  .cmp-bar > .lf-tags:empty { display: none; }
+  .cmp-bar > .lf-total { grid-column: 1 / -1; margin: 0; }
+  .cmp-bar .lf-trigger, .cmp-bar > .cmp-new, .cmp-bar > .export-menu > .btn-secondary { height: 42px; min-height: 42px; padding: 0 12px; white-space: nowrap; }
+  /* New complaint takes the space left between Filters and Export; when that is too narrow it reads "+ New". */
+  .cmp-bar > .cmp-new { container-type: inline-size; overflow: hidden; }
+}
+.cmp-new-short { display: none; }
+@container (max-width: 112px) { .cmp-new-full { display: none; } .cmp-new-short { display: inline; } }
+@media (max-width: 430px) { .cmp-bar .lf-caret { display: none; } }
+@media (max-width: 360px) { .cmp-bar .lf-trigger, .cmp-bar > .cmp-new, .cmp-bar > .export-menu > .btn-secondary { padding: 0 10px; } }
+/* Complaints filter menu: one column on phones, like the other filter menus (its desktop three-column rule came later and won). */
+@media (max-width: 760px) { .cmp-menu { grid-template-columns: 1fr; } }
+
+/* ==========================================================================
+   Telecalling head · Leads & assignment · Executive-wise distribution and progress.
+   Phones get a period dropdown and one card per executive (components/telecaller/ExecDistributionTable.tsx),
+   styled after the reference design; desktop and tablets keep the period buttons and the table as they were.
+   ========================================================================== */
+.xd-cards { display: none; }
+@media (max-width: 768px) {
+  .exec-dist { --xd-line: color-mix(in srgb, var(--line) 50%, transparent); }   /* faint lines inside the cards */
+
+  /* The cards sit straight on the page; the section keeps its title and dropdown. */
+  .exec-dist.panel { padding: 0; border: 0; background: none; box-shadow: none; }
+  .exec-dist-head { padding: 0 2px 14px !important; }
+  .exec-dist-head > div:first-child { flex: 1 1 100%; }
+  .exec-dist-head #exec-dist-title { font-size: 18px; font-weight: 700 !important; line-height: 1.3; color: var(--ink); }
+  .xd-table { display: none; }
+
+  /* The period dropdown (DateRangeSelect) takes the full width under the title. */
+  .exec-dist-period { flex: 1 1 100%; }
+
+  /* Card */
+  .xd-cards { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+  .xd-card {
+    width: 100%; display: flex; flex-direction: column; padding: 16px 18px 15px;
+    border: 1px solid color-mix(in srgb, var(--line) 80%, transparent); border-radius: 20px;
+    background: var(--card-bg); box-shadow: 0 2px 10px rgba(38, 53, 46, 0.05);
+    font: inherit; color: var(--ink); text-align: left;
+  }
+  button.xd-card { cursor: pointer; }
+  button.xd-card:active { background: color-mix(in srgb, var(--forest) 3%, var(--card-bg)); }
+  button.xd-card:focus-visible { outline: 2.5px solid var(--forest); outline-offset: 2px; }
+
+  /* Head: avatar, name, status, arrow; a faint line below. */
+  .xd-head { display: flex; align-items: center; gap: 15px; min-width: 0; padding-bottom: 13px; border-bottom: 1px solid var(--xd-line); }
+  .xd-avatar {
+    flex: none; width: 43px; height: 43px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--leaf) 13%, var(--card-bg)); color: var(--forest); font-size: 16px; font-weight: 700;
+  }
+  .xd-who { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+  .xd-name { min-width: 0; font-size: 17px; font-weight: 500; line-height: 1.3; color: var(--ink); overflow-wrap: break-word; }
+  .xd-card .xd-status { flex: none; display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 3px 11px; font-size: 12.5px; font-weight: 500; }
+  .xd-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .xd-chev { flex: none; color: var(--ink-soft); }
+
+  /* Figures. Columns take their content's width; the space left over sits before each line, as in the reference. */
+  .xd-main, .xd-more { display: grid; justify-content: space-between; border-bottom: 1px solid var(--xd-line); }
+  .xd-main { grid-template-columns: repeat(4, auto); padding: 19px 0 21px; }
+  .xd-more { grid-template-columns: repeat(6, auto); row-gap: 16px; padding: 21px 0 20px; container-type: inline-size; }
+  .xd-stat { min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--xd-line); }
+  .xd-main .xd-stat { gap: 9px; padding-left: 13px; }
+  .xd-more .xd-stat { gap: 9px; padding: 0 3px 0 5px; }
+  .xd-more .xd-stat:last-child { padding-right: 0; }
+  .xd-main .xd-stat:first-child, .xd-more .xd-stat:first-child { padding-left: 0; border-left: 0; }
+  .xd-stat .k { line-height: 1.2; color: var(--ink-soft); white-space: nowrap; }
+  .xd-stat .v { line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .xd-main .k { font-size: 13px; }
+  .xd-main .v { font-size: 22px; font-weight: 600; }
+  /* The six small figures share one row: their labels are sized to the card's width (up to 11px), with a few pixels to spare. */
+  .xd-more .k { font-size: min(11px, calc((100cqi - 53px) / 30.6)); }
+  .xd-more .v { font-size: 15px; font-weight: 500; }
+  .xd-stat .v.text-warn { color: var(--rust); }
+  .xd-team .xd-more { border-bottom: 0; padding-bottom: 4px; }
+
+  /* Progress and last call, side by side in a soft green strip. */
+  .xd-foot {
+    display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, max-content); align-items: center; column-gap: 12px;
+    margin-top: 15px; padding: 12px 12px 13px; border-radius: 14px; background: color-mix(in srgb, var(--sage) 75%, var(--card-bg));
+  }
+  .xd-progress { min-width: 0; display: flex; flex-direction: column; gap: 5px; padding-right: 18px; border-right: 1px solid var(--xd-line); }
+  .xd-bar { width: 100%; height: 7px; margin-top: 4px; border-radius: 999px; background: color-mix(in srgb, var(--forest) 9%, var(--card-bg)); overflow: hidden; }
+  .xd-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--forest); }
+  .xd-last { min-width: 0; display: flex; align-items: center; gap: 14px; padding-right: 12px; }
+  .xd-last-icon { flex: none; color: var(--ink-soft); }
+  .xd-last-text { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .xd-foot .k { font-size: 13px; line-height: 1.3; color: var(--ink-soft); }
+  .xd-progress .v { font-size: 17px; font-weight: 600; line-height: 1.3; color: var(--ink); white-space: nowrap; }
+  .xd-last .v { font-size: 15px; line-height: 1.3; color: var(--ink); }
+}
+/* Under 375px the six small figures no longer fit one row at a readable size: three to a row. */
+@media (max-width: 374px) {
+  .xd-card { padding: 14px 14px 12px; }
+  .xd-head { gap: 12px; }
+  .xd-who { column-gap: 10px; }
+  .xd-card .xd-status { gap: 6px; padding: 3px 9px; font-size: 12px; }
+  .xd-avatar { width: 40px; height: 40px; font-size: 14.5px; }
+  .xd-name { font-size: 16px; }
+  .xd-main .xd-stat { padding-left: 9px; }
+  .xd-main .k { font-size: 11.5px; }
+  .xd-main .v { font-size: 19px; }
+  .xd-more { grid-template-columns: repeat(3, auto); }
+  .xd-more .k { font-size: 11px; }
+  .xd-more .xd-stat:nth-child(3n + 1) { padding-left: 0; border-left: 0; }
+}
+/* Under 360px: Progress above Last call. */
+@media (max-width: 359px) {
+  .xd-foot { grid-template-columns: minmax(0, 1fr); row-gap: 12px; padding: 12px 14px; }
+  .xd-progress { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--xd-line); }
+}
+/* Under 340px: the main four as two rows of two. */
+@media (max-width: 339px) {
+  .xd-main { grid-template-columns: repeat(2, auto); row-gap: 16px; }
+  .xd-main .xd-stat:nth-child(3) { padding-left: 0; border-left: 0; }
+  .xd-main .k { font-size: 12.5px; }
+}
+
+/* Telecalling head · Follow-ups, phones: the count on its own line, then Filters and Export on one row,
+   then any active filter tags. Desktop and tablets are unchanged. */
+@media (max-width: 768px) {
+  .fu-bar { gap: 10px 8px; }
+  .fu-bar > .lf-total { order: -1; flex: 0 0 100%; margin: 0; }
+  /* Filters and Export share the row evenly instead of being pushed to opposite
+     edges, so there's no big empty gap between them. */
+  .fu-bar > .lf-wrap { order: 0; flex: 1 1 0; min-width: 0; }
+  .fu-bar > .export-menu { order: 1; flex: 1 1 0; min-width: 0; }
+  .fu-bar > .lf-wrap > .lf-trigger,
+  .fu-bar > .export-menu > .btn-secondary { width: 100%; justify-content: center; }
+  .fu-bar > .lf-tags { order: 2; flex: 0 0 100%; }
+  .fu-bar > .lf-tags:empty { display: none; }
+  .fu-bar .lf-trigger, .fu-bar > .export-menu > .btn-secondary { height: 46px; min-height: 46px; }
+}
+/* Follow-ups filter menu: one column on phones, like the other filter menus (its desktop two-column rule came later and won). */
+@media (max-width: 760px) { .fu-menu { grid-template-columns: 1fr; } }
+
+/* Telecalling head · Team overview · Pipeline, phones: the product buttons share one row, each label on one line.
+   The label size follows the row's width (up to 12.5px; the three names together are about 22.6 times the font size). */
+@media (max-width: 768px) {
+  .pipeline-tabs { flex-wrap: nowrap; gap: 6px; container-type: inline-size; }
+  .pipeline-tabs > .filter-chip {
+    flex: 1 1 auto; min-width: 0; display: inline-flex; align-items: center; justify-content: center;
+    padding: 7px 8px; border-radius: 18px; font-size: min(12.5px, calc((100cqi - 72px) / 22.61)); line-height: 1.25;
+    text-align: center; white-space: nowrap;
+  }
+}
+/* Under 360px the names no longer fit one line at a readable size: they wrap inside their buttons. */
+@media (max-width: 359px) {
+  .pipeline-tabs > .filter-chip { font-size: 11.5px; white-space: normal; }
+}
+
+/* ==========================================================================
+   Date range dropdown (components/DateRangeSelect.tsx): calendar icon, the chosen range, an arrow.
+   On phones it replaces date buttons that would wrap or scroll (those rows have the `date-chips` class).
+   ========================================================================== */
+.date-select { position: relative; display: block; width: 100%; }
+.date-select select {
+  display: block; width: 100%; height: 48px; margin: 0; padding: 0 42px 0 46px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--card-bg); box-shadow: none;
+  -webkit-appearance: none; appearance: none; font: inherit; font-size: 15px; font-weight: 500; color: var(--ink); cursor: pointer;
+}
+.date-select select:focus { outline: none; }
+.date-select select:focus-visible { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest) 15%, transparent); }
+.date-select-icon, .date-select-caret { position: absolute; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.date-select-icon { left: 15px; color: var(--leaf); }
+.date-select-caret { right: 15px; color: var(--ink-soft); }
+.date-select.phone-only { display: none; }
+@media (max-width: 768px) {
+  .date-chips { display: none !important; }
+  .date-select.phone-only { display: block; }
+}
+
+/* Telecalling head · Sales, phones: the period dropdown takes the full width under the sales total. */
+@media (max-width: 768px) {
+  .sales-head-tools { flex: 1 1 100%; margin-left: 0 !important; }
+  .sales-head-tools > .date-select { flex: 1 1 100%; }
+}
+
+/* ==========================================================================
+   Call Reports (telecalling head · workflow/CallReportsView.tsx), phones:
+   the four-stat strip becomes a 2×2 grid of cards instead of scrolling sideways,
+   and the four filter controls share an even 2×2 grid. Desktop is unchanged.
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Four controls, two per row, each the same width. */
+  .cr-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; }
+  .cr-filters > .filter-select { flex: none; min-width: 0; width: 100%; }
+  .cr-filters > .btn-primary { width: 100%; min-height: 42px; }
+}
+
+/* ==========================================================================
+   Phones: every stat strip (.scoreboard) becomes a 2-column grid of cards
+   instead of scrolling sideways, like the dashboard's KPI cards. Desktop keeps
+   the single divided strip exactly as it was.
+   ========================================================================== */
+@media (max-width: 768px) {
+  .scoreboard {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    overflow: visible; background: none; border: 0; border-radius: 0; box-shadow: none; margin-bottom: 18px;
+  }
+  .scoreboard > .score {
+    flex: none; padding: 14px; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--card-bg); box-shadow: 0 1px 2px rgba(38, 53, 46, 0.04);
+  }
+  .scoreboard > .score:last-child { border-right: 1px solid var(--line); }
+  .scoreboard > .score:hover { background: var(--card-bg); }
+  .scoreboard > .score .num { font-size: 22px; flex-wrap: wrap; }
+  .scoreboard > .score .num small { margin-left: 0; }
+  /* Odd number of cards (5, 7, …): the lone last card spans both columns so the
+     2-column grid stays balanced with no awkward empty half-row. */
+  .scoreboard > .score:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* ==========================================================================
+   Executive Reports (telecalling head · views/TelecallingExecutivesView.tsx), phones:
+   the All / Active / Inactive buttons become a dropdown, on one line with the period
+   dropdown and Download all. Desktop keeps the buttons exactly as they were.
+   ========================================================================== */
+.exec-status-select { display: none; }
+@media (max-width: 768px) {
+  .exec-toolbar > .exec-status-chips { display: none; }
+  .exec-toolbar .exec-status-select { display: block; }
+  .exec-toolbar { gap: 10px; align-items: stretch; }
+  /* Status, period and Download all share one row; the two selects stay narrow so Download all fits. */
+  .exec-toolbar > .toolbar-actions {
+    flex: 1 1 100%; width: 100%; display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr) minmax(0, 1.26fr);
+    gap: 8px; align-items: stretch;
+  }
+  .exec-toolbar > .toolbar-actions > * { min-width: 0; width: 100%; flex: none; }
+  .exec-toolbar .filter-select { min-width: 0; padding-right: 24px; }
+  .exec-toolbar .export-menu { min-width: 0; }
+  .exec-toolbar .export-menu > .btn-secondary { width: 100%; justify-content: center; gap: 4px; padding: 9px 6px; min-height: 42px; white-space: nowrap; }
+}
+@media (max-width: 374px) {
+  .exec-toolbar > .toolbar-actions { grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.08fr) minmax(0, 1.18fr); gap: 6px; }
+  .exec-toolbar .filter-select { font-size: 12px; padding: 9px 18px 9px 8px; }
+  .exec-toolbar .export-menu > .btn-secondary { font-size: 12px; padding: 9px 4px; }
+}
+
+/* ==========================================================================
+   Team Sales (telecalling head · telecaller/TeamSales.tsx), phones:
+   the two dropdowns and Export share one line. Desktop is unchanged.
+   ========================================================================== */
+@media (max-width: 768px) {
+  .sales-toolbar > .filters { display: none; }
+  .sales-toolbar > .toolbar-actions {
+    flex: 1 1 100%; width: 100%; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr) minmax(0, 0.76fr);
+    gap: 8px; align-items: stretch;
+  }
+  .sales-toolbar > .toolbar-actions > * { min-width: 0; width: 100%; flex: none; }
+  .sales-toolbar .filter-select { min-width: 0; padding-right: 24px; }
+  .sales-toolbar .export-menu { min-width: 0; }
+  .sales-toolbar .export-menu > .btn-secondary { width: 100%; justify-content: center; gap: 4px; padding: 9px 6px; min-height: 42px; white-space: nowrap; }
+}
+@media (max-width: 374px) {
+  .sales-toolbar > .toolbar-actions { gap: 6px; }
+  .sales-toolbar .filter-select { font-size: 12px; padding: 9px 18px 9px 8px; }
+  .sales-toolbar .export-menu > .btn-secondary { font-size: 12px; padding: 9px 4px; }
+}
+
+/* Reports pages (calling exec, telecalling head) & exec profile, phones: the period dropdown
+   (DateRangeSelect) that replaces the Today / Last 7 days / This month buttons takes the full row. */
+@media (max-width: 768px) {
+  .page-toolbar > .date-select.toolbar-date { flex: 1 1 100%; }
+}
+
+/* Staff onboarding (telecalling head · telecaller/StaffOnboarding.tsx), phones:
+   the icon-only Refresh stays a tidy square and the "Add staff" button fills the rest
+   of the row, both the same height, so the primary action looks balanced. */
+@media (max-width: 768px) {
+  .staff-toolbar > .toolbar-actions { width: 100%; display: flex; flex-wrap: nowrap; gap: 8px; }
+  .staff-toolbar > .toolbar-actions > .btn-secondary {
+    flex: 0 0 auto; width: 46px; min-width: 46px; padding: 0; justify-content: center; min-height: 46px;
+  }
+  .staff-toolbar > .toolbar-actions > .btn-primary {
+    flex: 1 1 auto; min-width: 0; justify-content: center; min-height: 46px;
+  }
+}
+
+/* Staff onboarding, phones: a compact per-person card (StaffOnboarding.tsx). The
+   desktop table is unchanged and the card list is hidden above 768px. */
+.staff-m-cards { display: none; }
+@media (max-width: 768px) {
+  .staff-desktop-only { display: none; }
+  /* The developer/backend note is hidden on phones. */
+  .staff-backend-note { display: none; }
+  .staff-m-cards { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
+  .staff-m-card { border: 1px solid var(--line); border-radius: 14px; background: var(--card-bg); padding: 14px; box-shadow: 0 1px 2px rgba(38, 53, 46, 0.04); }
+  .staff-m-card.is-off { opacity: 0.9; }
+
+  .smc-head { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; }
+  .smc-avatar { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--forest) 12%, var(--card-bg)); color: var(--forest); }
+  .smc-name { font-weight: 700; font-size: 15px; color: var(--ink); line-height: 1.25; }
+  .smc-sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; word-break: break-word; }
+  .smc-head > .chip { align-self: start; white-space: nowrap; }
+
+  .smc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .smc-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--ink-soft); }
+  .smc-val { font-size: 13px; color: var(--ink); margin-top: 2px; word-break: break-word; }
+
+  .smc-progress { margin-top: 12px; padding: 10px 12px; background: var(--page-bg); border-radius: 10px; }
+  .smc-prog-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .smc-prog-head > :first-child { font-weight: 700; color: var(--ink); }
+  .smc-prog-head > :last-child { color: var(--ink-soft); white-space: nowrap; }
+  .smc-bar { height: 6px; border-radius: 3px; margin: 8px 0; overflow: hidden; background: color-mix(in srgb, var(--forest) 16%, transparent); }
+  .smc-bar > span { display: block; height: 100%; background: var(--forest); border-radius: 3px; }
+  .smc-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .smc-steps li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .smc-steps li.ok { color: var(--ink); }
+  .smc-steps li.missing { color: var(--ink-soft); }
+  .smc-steps .step-toggle { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+  .smc-tick { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+  .smc-steps li.ok .smc-tick { background: var(--forest); }
+  .smc-steps li.missing .smc-tick { background: color-mix(in srgb, var(--ink-soft) 55%, transparent); }
+
+  .smc-note { margin-top: 8px; font-size: 12px; color: var(--ink-soft); }
+
+  .smc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .smc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; padding: 0 12px; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; border: 1px solid color-mix(in srgb, var(--forest) 20%, var(--line)); background: color-mix(in srgb, var(--forest) 7%, var(--card-bg)); color: var(--forest); }
+  .smc-btn.danger { border-color: color-mix(in srgb, var(--rust) 24%, var(--line)); background: color-mix(in srgb, var(--rust) 7%, var(--card-bg)); color: var(--rust); }
+  .smc-btn.smc-wide { grid-column: 1 / -1; }
+}
+
+/* Executive report profile (telecalling head · views/TelecallingExecutivesView.tsx), phones:
+   keep the period dropdown ("This month") and the "Download report" button on one line,
+   the period box taking the free space and the button sitting beside it. */
+@media (max-width: 768px) {
+  .exec-report-toolbar { flex-wrap: nowrap; align-items: stretch; gap: 8px; }
+  .exec-report-toolbar > .date-select.toolbar-date { flex: 1 1 auto; min-width: 0; }
+  .exec-report-toolbar > .toolbar-actions { flex: 0 0 auto; width: auto; }
+  .exec-report-toolbar > .toolbar-actions > .export-menu > .btn-secondary {
+    min-height: 46px; white-space: nowrap;
+  }
+}
+
+/* Reports & Analytics (telecalling head · telecaller/TeamReports.tsx), phones:
+   the "All executives" dropdown and the green "Download all (Excel)" button sit
+   side by side on one row with a small gap, both aligned under the period box above. */
+@media (max-width: 768px) {
+  .reports-toolbar > .toolbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+    gap: 8px;
+    align-items: stretch;
+  }
+  .reports-toolbar > .toolbar-actions > * { width: 100%; min-width: 0; flex: none; margin: 0; }
+  .reports-toolbar > .toolbar-actions > .filter-select { min-height: 46px; }
+  .reports-toolbar > .toolbar-actions > .download-all {
+    min-height: 46px; justify-content: center; white-space: nowrap; padding: 0 12px;
+  }
+}
+@media (max-width: 360px) {
+  /* Very narrow phones: ease the button text so "Download all (Excel)" still fits beside the dropdown. */
+  .reports-toolbar > .toolbar-actions > .download-all { font-size: 13px; padding: 0 8px; }
+}
+
+/* Orders & tracking (telecalling head · telecaller/TeamOrders.tsx), phones:
+   make the Filters and Export buttons a matching, larger size (same height and
+   same width) so they line up on both ends with the order count centered between. */
+@media (max-width: 768px) {
+  .ord-bar .lf-trigger,
+  .ord-bar > .export-menu > .btn-secondary {
+    height: 48px; min-height: 48px; min-width: 124px; justify-content: center;
+    padding: 0 16px; white-space: nowrap; font-size: 14px;
+  }
+}
+
+/* ==========================================================================
+   Marketing (telecalling head · telecaller/TeamMarketing.tsx), phones:
+   the Clients filter chips and the campaign template chips fill the row evenly
+   (one row when they fit, a balanced grid otherwise), and the clients search bar
+   spans the full width. Desktop and tablets are unchanged.
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Clients: the heading on its own line, then the filter chips, then the full-width search. */
+  .mk-contacts-head { flex-direction: column; align-items: stretch; }
+  .mk-contacts-tools { width: 100%; flex-direction: column; align-items: stretch; gap: 10px; }
+  .mk-contacts-tools > .lf-pills { width: 100%; gap: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); }
+  .mk-contacts-tools > .lf-pills > .lf-pill { width: 100%; display: inline-flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; }
+  .mk-contacts-search { width: 100%; max-width: none; }
+
+  /* Campaign templates: a balanced two-by-two grid, each label on one line, equal heights. */
+  .mk-templates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mk-templates > .lf-pill { width: 100%; height: 100%; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 600; border-radius: 12px; padding: 10px 8px; }
+}
+
+/* ==========================================================================
+   WhatsApp campaign composer (telecalling head · telecaller/TeamMarketing.tsx),
+   phones: a cleaner, card-style layout — tinted step bars, a "steps" pill, a solid
+   photo card, a prominent full-width Send button and a boxed info note. Desktop and
+   tablets keep their existing layout (every rule here is phone-only).
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* "2 steps" pill in the header */
+  .mk-form > .panel-head .panel-meta {
+    background: color-mix(in srgb, var(--forest) 10%, transparent); color: var(--forest);
+    padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 12px;
+  }
+  /* Step headers as tinted rounded bars */
+  .mk-form .mk-step {
+    background: color-mix(in srgb, var(--forest) 6%, transparent); border-radius: 12px;
+    padding: 11px 12px; margin: 16px 0 10px; font-size: 14px;
+  }
+  .mk-form .mk-step-last { margin-top: 16px; padding: 11px 12px; }
+
+  /* Product / Campaign name fields: softer rounded corners like the rest of the card */
+  .mk-fields .filter-select, .mk-fields .filter-input { border-radius: 12px; }
+
+  /* Photo card: a solid tinted card (not dashed) with a chevron on the right */
+  .mk-photo-drop {
+    position: relative; padding-right: 40px; border-style: solid;
+    border-color: color-mix(in srgb, var(--leaf) 20%, var(--line));
+    background: color-mix(in srgb, var(--leaf) 8%, transparent);
+  }
+  .mk-photo-drop::after {
+    content: ''; position: absolute; right: 16px; top: 50%; width: 9px; height: 9px;
+    margin-top: -5px; border-right: 2px solid var(--ink-soft); border-top: 2px solid var(--ink-soft);
+    transform: rotate(45deg); pointer-events: none;
+  }
+
+  /* Send step: the Prepare button fills the width and the note sits in a tinted box */
+  .mk-send-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .mk-send-row .btn-primary {
+    position: relative; width: 100%; justify-content: center; min-height: 50px;
+    border-radius: 12px; font-size: 15px;
+  }
+  .mk-send-row .btn-primary::after {
+    content: ''; position: absolute; right: 16px; top: 50%; width: 8px; height: 8px;
+    margin-top: -5px; border-right: 2px solid currentColor; border-top: 2px solid currentColor;
+    transform: rotate(45deg);
+  }
+  .mk-send-row .loc {
+    flex: 1 1 100%; min-width: 0; background: color-mix(in srgb, var(--forest) 5%, transparent);
+    border-radius: 10px; padding: 10px 12px;
+  }
+  .mk-send-row .loc::before { content: '\24D8'; margin-right: 6px; font-size: 14px; color: var(--ink-soft); }
+}
+
+/* ==========================================================================
+   Calling executive · Today card (calling-executive/CeOverview.tsx), phones:
+   the progress ring sits on the left with the three summary cards stacked on the
+   right, and Start calling spans the full width below. Desktop is unchanged.
+   ========================================================================== */
+@media (max-width: 768px) {
+  .ce-today .ce-today-body { display: flex; flex-direction: row; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .ce-today .ce-ring { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .ce-today .ce-ring .ring-wrap, .ce-today .ce-ring .ring-wrap svg { width: 104px; height: 104px; }
+  .ce-today .ce-ring .ring-label .rnum { font-size: 22px; }
+  /* Three summary cards stacked vertically on the right, each the same height. */
+  .ce-today .ce-today-stats { flex: 1; min-width: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; align-self: stretch; }
+  .ce-today .ce-today-stats .mini-stat { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 12px; }
+  .ce-today .ce-today-stats .mini-num { margin-bottom: 0; font-size: 18px; }
+  .ce-today .ce-start { width: 100%; justify-content: center; }
+}
+
+/* ==========================================================================
+   Regional report (manager & telecalling head · views/RegionalReportView.tsx), phones:
+   the four filters sit two per row (State · District, then Period · Source), and the
+   "All farmers" dropdown shares one row with "Download farmer details". Desktop unchanged.
+   ========================================================================== */
+/* Desktop: the farmer download row keeps the look it had from its inline styles. */
+.region-farmer-tools { justify-content: flex-end; gap: 10px; margin-top: 12px; }
+@media (max-width: 768px) {
+  .region-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
+  /* Row 1: State and District, two equal columns (the breadcrumb pin and › separator
+     are hidden on phones so all four dropdowns line up in a tidy 2×2 grid). */
+  .region-crumb { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; align-items: center; }
+  .region-crumb > .region-pin, .region-crumb > .region-sep { display: none; }
+  .region-crumb > .pill-select { width: 100%; min-width: 0; }
+  .region-crumb > .pill-select > select { width: 100%; max-width: none; }
+  /* Row 2: Period and Source, two equal columns. */
+  .region-toolbar-right { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .region-toolbar-right > .pill-select { width: 100%; }
+  .region-toolbar-right > .pill-select > select { width: 100%; max-width: none; }
+  /* All four dropdowns the same height and padding, with room for the arrow. */
+  .region-toolbar .pill-select select { padding: 0 30px 0 14px; min-height: 46px; font-size: 13px; }
+
+  /* Farmer download: the "All farmers" dropdown and the "Download farmer details"
+     button become two matching full-width pills (same shape, height and width),
+     stacked so the long download label is never clipped. */
+  .region-farmer-tools { flex-wrap: wrap; justify-content: stretch; align-items: stretch; gap: 10px; }
+  .region-farmer-tools > .pill-select,
+  .region-farmer-tools > .export-menu { flex: 1 1 100%; width: 100%; min-width: 0; }
+  .region-farmer-tools > .pill-select > select {
+    width: 100%; max-width: none; min-height: 46px; border-radius: 22px;
+    font-size: 13px; background: var(--card-bg); padding: 10px 32px 10px 16px;
+  }
+  .region-farmer-tools > .export-menu > .btn-secondary {
+    width: 100%; min-height: 46px; border-radius: 22px; font-size: 13px;
+    justify-content: center; white-space: nowrap; padding: 0 16px;
+  }
+}
+
+/* ==========================================================================
+   Other filter toolbars that wrapped to 3+ rows on phones: the search spans the
+   full width and the dropdowns sit two per row. Desktop is unchanged.
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Manager · Orders: search on top, the four dropdowns two per row, Export below. */
+  .filter-row.orders-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .filter-row.orders-filters > .filter-input { grid-column: 1 / -1; width: 100%; }
+  .filter-row.orders-filters > .filter-select { width: 100%; min-width: 0; }
+  .filter-row.orders-filters > .filter-row-end { grid-column: 1 / -1; margin: 0; }
+  .filter-row.orders-filters > .filter-row-end .export-menu, .filter-row.orders-filters > .filter-row-end .export-menu > .btn-secondary { width: 100%; justify-content: center; }
+
+  /* Telecalling head · Team overview lead report: search on top, two dropdowns in a row. */
+  .filter-row.lead-report-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .filter-row.lead-report-filters > .filter-select:first-child { grid-column: 1 / -1; }
+  .filter-row.lead-report-filters > .filter-select { width: 100%; min-width: 0; }
+}
+
+/* ==========================================================================
+   Phone-only plain dropdowns that replace button filter groups (the buttons carry
+   the `date-chips` class and are hidden on phones). Desktop keeps the buttons.
+   ========================================================================== */
+.phone-select { display: none; }
+@media (max-width: 768px) {
+  .phone-select { display: block; }
+  /* A single status/period dropdown that replaced a button group: a tidy, tappable width. */
+  .filter-select.phone-select { width: 100%; max-width: 300px; min-height: 46px; font-size: 14px; }
+  .inv-toolbar > .filter-select.phone-select { max-width: 260px; }
+}
+
+/* Calling exec · Follow-ups: the five status filters become one dropdown on phones. */
+@media (max-width: 768px) {
+  .filter-select.fu-status-select { width: 100%; max-width: none; min-height: 46px; font-size: 14px; }
+}
+
+/* Calling exec · Call reports (MyReports): period, call status and report as three dropdowns on one row. */
+.mr-mobile-filters { display: none; }
+@media (max-width: 768px) {
+  .mr-report-row { display: none; }   /* the standalone report select is replaced by the 3-in-a-row */
+  .mr-mobile-filters { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 8px; width: 100%; }
+  .mr-mobile-filters > .filter-select { width: 100%; min-width: 0; min-height: 46px; font-size: 12.5px; padding: 10px 28px 10px 12px; }
+}
+
+/* Order calls / Order follow-up (orders/OrderFollowUp.tsx), phones: the status dropdown
+   fills the row with a comfortable gap before Refresh, which sits on the right. Desktop unchanged. */
+@media (max-width: 768px) {
+  .filter-row.oc-filters { gap: 14px; align-items: center; }
+  .filter-row.oc-filters > .filter-select { flex: 1 1 auto; min-width: 0; min-height: 46px; }
+  .filter-row.oc-filters > .btn-secondary { flex: none; }
+}
+
+/* Lone / few filter dropdowns in a .filter-row: full width, stacked, on phones. Desktop unchanged.
+   (Calling exec · Enquiries, Complaints; Manager · Lead workflow.) */
+@media (max-width: 768px) {
+  .filter-row.filter-row-mobile { flex-direction: column; align-items: stretch; gap: 10px; }
+  .filter-row.filter-row-mobile > .filter-select { width: 100%; max-width: none; min-width: 0; flex: none; min-height: 46px; }
+  .filter-row.filter-row-mobile > .link-btn { align-self: flex-start; }
+}
+
+/* ==========================================================================
+   Phones: standardise every native dropdown (.filter-select) to the polished
+   look of the date dropdown (DateRangeSelect) — white, rounded 12px, a subtle
+   border, a consistent height, the chevron already set on the base rule, and a
+   soft green focus ring. Desktop keeps its original dropdown styling.
+   ========================================================================== */
+@media (max-width: 768px) {
+  .filter-select {
+    min-height: 46px;
+    border-radius: 12px;
+    font-size: 14px;
+    background-color: var(--card-bg);
+    padding-top: 0; padding-bottom: 0;
+  }
+  .filter-select:focus { outline: none; }
+  .filter-select:focus-visible { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest) 15%, transparent); }
+}
+
+/* ==========================================================================
+   Phones: "Needs action" alert badges (.alert-strip / .alert-pill) become
+   full-width rows stacked vertically, like the Enquiries needs-action rows.
+   Colours, labels, counts and tap behaviour are unchanged; desktop keeps the
+   side-by-side badges. (Stock, Orders, Products.)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .alert-strip { flex-direction: column; align-items: stretch; gap: 8px; }
+  .alert-strip-label { margin-bottom: 2px; }
+  .alert-strip > .alert-pill {
+    width: 100%; display: flex; align-items: center; min-height: 48px;
+    padding: 12px 16px; border-radius: 12px; font-size: 13.5px; text-align: left; line-height: 1.3;
+  }
+}
+
+/* ==========================================================================
+   Telecalling head · Stock (telecaller/TeamInventory.tsx), phones: the five
+   controls sit two per row — status | category, then sort | Export — and
+   Catalogue PDF spans the full width below. Desktop is unchanged.
+   ========================================================================== */
+@media (max-width: 768px) {
+  .stock-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
+  .stock-toolbar > .date-chips { display: none; }
+  .stock-toolbar > .phone-select { width: 100%; max-width: none; margin: 0; min-height: 46px; }
+  /* Let the action group's children join the same grid. */
+  .stock-toolbar > .toolbar-actions { display: contents; }
+  .stock-toolbar .toolbar-actions > .filter-select { width: 100%; min-width: 0; margin: 0; min-height: 46px; }
+  .stock-toolbar .toolbar-actions > .export-menu { min-width: 0; margin: 0; }
+  .stock-toolbar .toolbar-actions > .export-menu > .btn-secondary { width: 100%; justify-content: center; min-height: 46px; }
+  .stock-toolbar .toolbar-actions > .catalogue-btn { grid-column: 1 / -1; width: 100%; justify-content: center; min-height: 46px; margin: 0; }
+}
+
+/* ==========================================================================
+   Website Enquiries (telecalling head · views/EnquiriesView.tsx), phones:
+   Filters, Import and Export share one row; the search box is on its own row
+   below, full width; tags and the count follow. Desktop is unchanged.
+   ========================================================================== */
+@media (max-width: 768px) {
+  .enq-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 8px; }
+  .enq-bar > .lf-wrap { order: 1; }
+  .enq-bar > .import-btn { order: 2; margin-left: auto; }
+  .enq-bar > .export-menu { order: 3; }
+  .enq-bar > .enq-search { order: 4; flex: 0 0 100%; width: 100%; max-width: none; }
+  .enq-bar > .lf-tags { order: 5; flex: 0 0 100%; }
+  .enq-bar > .lf-tags:empty { display: none; }
+  .enq-bar > .lf-total { order: 6; flex: 0 0 100%; margin: 0; }
+  .enq-bar .lf-trigger, .enq-bar > .import-btn, .enq-bar > .export-menu > .btn-secondary { height: 42px; min-height: 42px; white-space: nowrap; }
+}
+/* Very narrow phones: tighten the three buttons so Filters · Import · Export still share one row. */
+@media (max-width: 360px) {
+  .enq-bar { gap: 10px 6px; }
+  .enq-bar .lf-trigger, .enq-bar > .import-btn, .enq-bar > .export-menu > .btn-secondary { padding-left: 10px; padding-right: 10px; }
+  .enq-bar .lf-trigger .lf-caret { display: none; }
+}

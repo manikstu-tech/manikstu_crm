@@ -9,6 +9,8 @@ import { TeamData, UNASSIGNED_STALE_DAYS, UNCALLED_STALE_DAYS, callerName, isOpe
 import { initials } from '../views/telecallingMetrics';
 
 type Tab = 'Overdue' | 'Due today' | 'Upcoming' | 'Done' | 'All';
+/** The status the page opens on. It isn't shown as a filter tag: only statuses picked after that are. */
+const START_TAB: Tab = 'Overdue';
 
 /**
  * One row of the Follow-up list. A scheduled callback the executive booked, or a
@@ -46,7 +48,7 @@ interface Props {
 /** Callbacks the calling executives owe: who is behind, and moving leads to someone who can call. */
 export default function TeamFollowups({ data, searchQuery, initialCaller, onReassign, onToast }: Props) {
   const [caller, setCaller] = useState<number | 'all'>(initialCaller ?? 'all');
-  const [tab, setTab] = useState<Tab>('Overdue');
+  const [tab, setTab] = useState<Tab>(START_TAB);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +119,7 @@ export default function TeamFollowups({ data, searchQuery, initialCaller, onReas
     .sort((a, b) => Number(b.t.is_active) - Number(a.t.is_active) || b.overdue - a.overdue);
 
   const tags = [
-    tab !== 'All' && { key: 'status', k: 'Status', v: tab, clear: () => setTab('All') },
+    tab !== 'All' && tab !== START_TAB && { key: 'status', k: 'Status', v: tab, clear: () => setTab('All') },
     caller !== 'all' && { key: 'caller', k: 'Executive', v: callerName(caller), clear: () => setCaller('all') },
   ].filter(Boolean) as { key: string; k: string; v: string; clear: () => void }[];
   const clearFilters = () => { setTab('All'); setCaller('all'); };
@@ -206,7 +208,7 @@ export default function TeamFollowups({ data, searchQuery, initialCaller, onReas
       </div>
 
       {/* One filter menu, active filters as tags, export */}
-      <div className="lf-bar">
+      <div className="lf-bar fu-bar">
         <div className="lf-wrap" ref={menuRef}>
           <button className={`lf-trigger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="dialog">
             <SlidersHorizontal size={15} /> Filters
@@ -260,7 +262,7 @@ export default function TeamFollowups({ data, searchQuery, initialCaller, onReas
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <div className="table-wrap fu-table-wrap">
           <table className="orders-table fu-table">
             <thead>
               <tr><th>Due</th><th>Lead</th><th>Reason</th><th>Calling executive</th><th>Last call</th><th>Status</th><th>Move to</th></tr>
@@ -336,7 +338,108 @@ export default function TeamFollowups({ data, searchQuery, initialCaller, onReas
             </tbody>
           </table>
         </div>
+
+        {/* Phones: the same follow-ups as cards (the table above is hidden there), no sideways scrolling. */}
+        <div className="fu-cards-wrap">
+          {rows.length === 0 ? (
+            <p className="fu-cards-empty">{`No ${tab === 'All' ? '' : `${tab.toLowerCase()} `}follow-ups${caller === 'all' ? '' : ` for ${callerName(caller)}`}.`}</p>
+          ) : (
+            <ul className="fu-cards" aria-label="Follow-ups">
+              {rows.map(r => <li key={r.key}>{followCard(r)}</li>)}
+            </ul>
+          )}
+        </div>
       </div>
     </>
   );
+
+  /** A picker to hand a lead to an active executive (same choices as the table's "Move to" / "Assign to"). */
+  function cardPicker(lead: TrackerLead, label: string, excludeId: number) {
+    return (
+      <select
+        className="reassign fu-card-picker"
+        value=""
+        aria-label={`${label} ${lead.customer_name}`}
+        onChange={e => onReassign([lead.id], Number(e.target.value))}
+      >
+        <option value="" disabled>{label}…</option>
+        {TELECALLERS.filter(x => x.is_active && x.id !== excludeId).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+      </select>
+    );
+  }
+
+  /** One follow-up as a card: everything its table row shows, stacked to fit a phone. */
+  function followCard(r: FollowRow) {
+    if (r.kind === 'followup') {
+      const f = r.f;
+      const lead = r.lead;
+      const last = lastCallFor(f.lead_id, data.activities);
+      const t = r.tab;
+      const owner = TELECALLERS.find(x => x.id === f.caller_id);
+      return (
+        <article className={`fu-card ${t === 'Overdue' ? 'overdue' : ''}`}>
+          <div className="fu-card-head">
+            <div className="fu-card-who">
+              <span className="fu-card-name">{lead?.customer_name ?? '—'}</span>
+              {lead && <span className="fu-card-sub">{lead.phone} · {stageName(lead.stage_id)}</span>}
+            </div>
+            <StatusChip status={f.status === 'missed' ? 'Missed' : t} />
+          </div>
+          <dl className="fu-card-rows">
+            <div>
+              <dt>Due</dt>
+              <dd>
+                <span className={t === 'Overdue' ? 'text-warn strong' : 'strong'}>{f.due_at.startsWith(TODAY) ? `Today, ${time12(f.due_at)}` : shortDate(f.due_at)}</span>
+                {t === 'Overdue' && <span className="fu-late">{daysLate(f)} {daysLate(f) === 1 ? 'day' : 'days'} late</span>}
+              </dd>
+            </div>
+            <div><dt>Reason</dt><dd>{f.note || '—'}</dd></div>
+            <div>
+              <dt>Executive</dt>
+              <dd>{callerName(f.caller_id)}{owner && !owner.is_active && <span className="chip muted">Inactive</span>}</dd>
+            </div>
+            <div>
+              <dt>Last call</dt>
+              <dd>{last ? <>{last.note}<span className="loc">{ago(last.created_at)}</span></> : <span className="loc">Never</span>}</dd>
+            </div>
+          </dl>
+          {t !== 'Done' && lead && cardPicker(lead, 'Move to', f.caller_id)}
+        </article>
+      );
+    }
+
+    // Stuck lead surfaced automatically (unassigned too long, or uncalled too long).
+    const unassigned = r.kind === 'unassigned';
+    return (
+      <article className="fu-card overdue">
+        <div className="fu-card-head">
+          <div className="fu-card-who">
+            <span className="fu-card-name">{r.lead.customer_name}</span>
+            <span className="fu-card-sub">{r.lead.phone} · {r.lead.source}</span>
+          </div>
+          <span className="chip pending">{unassigned ? 'Unassigned' : 'Not called'}</span>
+        </div>
+        <dl className="fu-card-rows">
+          <div>
+            <dt>Due</dt>
+            <dd>
+              <span className="text-warn strong">{shortDate(r.lead.created_at)}</span>
+              <span className="fu-late">{r.days} {r.days === 1 ? 'day' : 'days'} {unassigned ? 'unassigned' : 'no call'}</span>
+            </dd>
+          </div>
+          <div><dt>Reason</dt><dd>{reasonOf(r)}</dd></div>
+          <div>
+            <dt>Executive</dt>
+            <dd>
+              {unassigned
+                ? <span className="chip pending">Unassigned</span>
+                : <>{callerName(r.lead.assigned_to)}{!TELECALLERS.find(x => x.id === r.lead.assigned_to)?.is_active && <span className="chip muted">Inactive</span>}</>}
+            </dd>
+          </div>
+          <div><dt>Last call</dt><dd><span className="loc">Never</span></dd></div>
+        </dl>
+        {unassigned ? cardPicker(r.lead, 'Assign to', 0) : cardPicker(r.lead, 'Move to', r.lead.assigned_to)}
+      </article>
+    );
+  }
 }

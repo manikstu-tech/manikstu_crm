@@ -6,6 +6,7 @@ import { ENQUIRY_ROW_LABEL, EnquiryCandidate, downloadEnquiryTemplate, parseEnqu
 import type { NewEnquiryData } from '../../lib/trackerOps';
 import { shortDateTime } from '../../lib/format';
 import Modal from '../Modal';
+import CardTable from '../CardTable';
 
 const TYPES: EnquiryType[] = ['sales', 'partnership', 'career', 'general'];
 
@@ -126,7 +127,7 @@ export default function ImportEnquiries({ existing, onImport, onClose }: Props) 
               </div>
             )}
 
-            <div className="table-wrap import-table">
+            <CardTable className="import-table" titleCol={2} chipCol={6}>
               <table>
                 <thead>
                   <tr><th></th><th>Row</th><th>From</th><th>Message</th><th>Type</th><th>Received</th><th></th></tr>
@@ -155,7 +156,7 @@ export default function ImportEnquiries({ existing, onImport, onClose }: Props) 
                   ))}
                 </tbody>
               </table>
-            </div>
+            </CardTable>
 
             {readySales > 0 && (
               <label className="check-line" style={{ marginTop: 12 }}>

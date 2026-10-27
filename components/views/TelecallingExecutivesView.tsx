@@ -10,6 +10,8 @@ import {
   OUTCOMES, PERIOD_LABEL, Period, TeamData, fmtDuration, isOverdue, productName, salesByMonth, stageName, time12, verticalName,
 } from '../telecaller/tcData';
 import { CALL_TARGET_DAILY, ExecMetrics, allExecMetrics, callsPerDay, initials, teamAverage } from './telecallingMetrics';
+import CardTable from '../CardTable';
+import DateRangeSelect from '../DateRangeSelect';
 
 const OUTCOME_CHIP: Record<string, string> = { Connected: 'delivered', 'No answer': 'transit', Busy: 'pending', 'Wrong number': 'muted', 'Not interested': 'muted' };
 
@@ -66,8 +68,8 @@ export default function TelecallingExecutivesView({ data, selectedId, onSelect, 
 
   return (
     <>
-      <div className="page-toolbar">
-        <div className="filters">
+      <div className="page-toolbar exec-toolbar">
+        <div className="filters exec-status-chips">
           {(['all', 'active', 'inactive'] as const).map(s => (
             <button key={s} className={`filter-chip ${status === s ? 'active' : ''}`} onClick={() => setStatus(s)}>
               {s === 'all' ? `All (${all.length})` : s === 'active' ? `Active (${all.filter(m => m.t.is_active).length})` : `Inactive (${all.filter(m => !m.t.is_active).length})`}
@@ -75,6 +77,12 @@ export default function TelecallingExecutivesView({ data, selectedId, onSelect, 
           ))}
         </div>
         <div className="toolbar-actions">
+          {/* Phones: the All / Active / Inactive buttons become this dropdown, on one line with the period and Download all. */}
+          <select className="filter-select exec-status-select" value={status} onChange={e => setStatus(e.target.value as typeof status)} aria-label="Executive status">
+            <option value="all">All ({all.length})</option>
+            <option value="active">Active ({all.filter(m => m.t.is_active).length})</option>
+            <option value="inactive">Inactive ({all.filter(m => !m.t.is_active).length})</option>
+          </select>
           <select className="filter-select" value={period} onChange={e => setPeriod(e.target.value as Period)} aria-label="Period">
             {(['today', '7d', 'month'] as Period[]).map(p => <option key={p} value={p}>{PERIOD_LABEL[p]}</option>)}
           </select>
@@ -200,12 +208,15 @@ function ExecutiveDetail({ data, id, onBack, onToast }: { data: TeamData; id: nu
         </div>
       </div>
 
-      <div className="page-toolbar">
-        <div className="filters">
+      <div className="page-toolbar exec-report-toolbar">
+        <div className="filters date-chips">
           {(['today', '7d', 'month'] as Period[]).map(p => (
             <button key={p} className={`filter-chip ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{PERIOD_LABEL[p]}</button>
           ))}
         </div>
+        {/* Phones: the period buttons become a single calendar dropdown. */}
+        <DateRangeSelect phoneOnly className="toolbar-date" label="Period" value={period} onChange={p => setPeriod(p)}
+          options={(['today', '7d', 'month'] as Period[]).map(p => ({ value: p, label: PERIOD_LABEL[p] }))} />
         <div className="toolbar-actions"><ExportMenu onExport={report} label="Download report" /></div>
       </div>
 
@@ -293,7 +304,7 @@ function ExecutiveDetail({ data, id, onBack, onToast }: { data: TeamData; id: nu
 
       <div className="panel">
         <div className="panel-head"><h2>Recent calls</h2><span className="panel-meta">latest {recent.length}</span></div>
-        <div className="table-wrap">
+        <CardTable titleCol={1}>
           <table>
             <thead><tr><th>When</th><th>Lead</th><th>Outcome</th><th>Talk time</th><th>Stage after</th><th>Note</th></tr></thead>
             <tbody>
@@ -310,7 +321,7 @@ function ExecutiveDetail({ data, id, onBack, onToast }: { data: TeamData; id: nu
               ))}
             </tbody>
           </table>
-        </div>
+        </CardTable>
         <div className="panel-note">Call outcomes, talk time and daily targets are sample values until the backend records them.</div>
       </div>
     </>

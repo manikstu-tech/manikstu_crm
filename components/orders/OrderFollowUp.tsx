@@ -3,6 +3,7 @@ import { Phone } from 'lucide-react';
 import type { CallStatus, CommunicationStatus, SalesOrder } from '../../data/managerDashboard';
 import { ORDER_CHIP, rupees, shortDateTime } from '../../lib/format';
 import Modal from '../Modal';
+import CardTable from '../CardTable';
 
 // Orders the seller has confirmed, for the telecalling team to phone the customer about. Used by the
 // telecalling head and the calling executives. Reads and writes the CRM backend through /api/orders.
@@ -124,7 +125,7 @@ export default function OrderFollowUp({ searchQuery = '', onToast }: { searchQue
 
   return (
     <>
-      <div className="filter-row one-line">
+      <div className="filter-row one-line oc-filters">
         <select className="filter-select" value={filter} onChange={e => setFilter(e.target.value as CommunicationStatus | 'all')} aria-label="Call status">
           <option value="all">All orders ({counts.all})</option>
           {(Object.keys(COMM_LABEL) as CommunicationStatus[]).map(k => (
@@ -136,7 +137,7 @@ export default function OrderFollowUp({ searchQuery = '', onToast }: { searchQue
       {error && <div className="filter-note">{error} Showing the last loaded list.</div>}
 
       <div className="panel">
-        <div className="table-wrap">
+        <CardTable>
           <table className="orders-table">
             <thead>
               <tr><th>Order</th><th>Customer</th><th>Items</th><th className="num-col">Total</th><th>Order status</th><th>Calls</th><th>Action</th></tr>
@@ -177,7 +178,7 @@ export default function OrderFollowUp({ searchQuery = '', onToast }: { searchQue
               })}
             </tbody>
           </table>
-        </div>
+        </CardTable>
       </div>
 
       <Modal isOpen={open !== null} onClose={() => setOpenId(null)} title={open ? `Order ${open.order_number}` : ''} closeOnBackdrop={false}>

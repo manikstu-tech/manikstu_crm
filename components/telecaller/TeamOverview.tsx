@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { CalendarClock, IndianRupee, Percent, PhoneCall, ShoppingCart, UserPlus, X } from 'lucide-react';
+import { CalendarClock, ChevronRight, IndianRupee, Percent, PhoneCall, ShoppingCart, UserPlus, X } from 'lucide-react';
+import { initials } from '../views/telecallingMetrics';
 import { TELECALLERS, TODAY, VERTICALS, SalesOrder, WebEnquiry, Telecaller } from '../../data/managerDashboard';
 import { ORDER_CHIP, ago, daysBefore, pct, rupees, rupeesShort, shortDate } from '../../lib/format';
 import { ExportFormat, exportTable } from '../../lib/export';
@@ -37,7 +38,8 @@ type SortKey = 'revenue' | 'calls' | 'connectRate' | 'openLeads' | 'overdueFollo
 
 export default function TeamOverview({ data, orders, enquiries, onReassign, onOpenLeads, onOpenFollowups, onToast }: Props) {
   const [period, setPeriod] = useState<Period>('today');
-  const [verticalId, setVerticalId] = useState<number | 'all'>('all');
+  // The overview always covers every product (its product picker was removed).
+  const [verticalId] = useState<number | 'all'>('all');
   const [region, setRegion] = useState<string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('revenue');
   const [openStaffId, setOpenStaffId] = useState<number | null>(null);
@@ -123,15 +125,9 @@ export default function TeamOverview({ data, orders, enquiries, onReassign, onOp
     <>
       {/* Filters */}
       <div className="page-toolbar">
-        <div className="filters">
-          {(['today', '7d', 'month'] as Period[]).map(p => (
-            <button key={p} className={`filter-chip ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>{PERIOD_LABEL[p]}</button>
-          ))}
-        </div>
-        <div className="toolbar-actions">
-          <select className="filter-select" value={verticalId} onChange={e => setVerticalId(e.target.value === 'all' ? 'all' : Number(e.target.value))} aria-label="Product">
-            <option value="all">All products</option>
-            {VERTICALS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+        <div className="toolbar-actions overview-filters">
+          <select className="filter-select" value={period} onChange={e => setPeriod(e.target.value as Period)} aria-label="Date range">
+            {(['today', '7d', 'month'] as Period[]).map(p => <option key={p} value={p}>{PERIOD_LABEL[p]}</option>)}
           </select>
           <select className="filter-select" value={region} onChange={e => setRegion(e.target.value)} aria-label="Region">
             <option value="all">All regions</option>
@@ -148,7 +144,7 @@ export default function TeamOverview({ data, orders, enquiries, onReassign, onOp
             <h2>Pipeline</h2>
             <span className="panel-meta">{pipeline.reduce((a, p) => a + p.stuck, 0)} stuck 7+ days</span>
           </div>
-          <div className="filters" style={{ marginBottom: 16 }}>
+          <div className="filters pipeline-tabs" style={{ marginBottom: 16 }}>
             {VERTICALS.map(v => (
               <button key={v.id} className={`filter-chip ${pipelineVertical === v.id ? 'active' : ''}`} onClick={() => setPipelineVertical(v.id)}>{v.name}</button>
             ))}
@@ -296,11 +292,26 @@ export default function TeamOverview({ data, orders, enquiries, onReassign, onOp
 
         {/* Team roster */}
         <div className="panel span-3">
-          <div className="panel-head">
+          <div className="panel-head team-panel-head">
             <h2>Telecalling Team</h2>
-            <ExportMenu onExport={exportTeam} />
+            <div className="team-head-tools">
+              {/* Phones: Sort by sits on the same line as Export, below the title. Hidden on desktop (the table sorts by its column headers). */}
+              <label className="team-cards-sort">
+                <span>Sort by</span>
+                <select className="filter-select" value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)}>
+                  <option value="revenue">Revenue</option>
+                  <option value="calls">Calls</option>
+                  <option value="connectRate">Connect</option>
+                  <option value="openLeads">Open leads</option>
+                  <option value="overdueFollowups">Overdue follow-ups</option>
+                  <option value="sales">Sales</option>
+                  <option value="conversion">Conversion</option>
+                </select>
+              </label>
+              <ExportMenu onExport={exportTeam} />
+            </div>
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap team-roster-table">
             <table className="team-table roster-table">
               <thead>
                 <tr>
@@ -342,12 +353,43 @@ export default function TeamOverview({ data, orders, enquiries, onReassign, onOp
               </tbody>
             </table>
           </div>
+
+          {/* Phones: the same telecallers as cards (the table above is hidden there), no sideways scrolling. */}
+          <div className="team-cards-wrap">
+            <ul className="team-cards" aria-label="Telecalling team">
+              {sorted.map(s => {
+                const flag = !s.t.is_active ? s.openLeads > 0 : s.callsToday === 0 || s.overdueFollowups >= 2;
+                return (
+                  <li key={s.t.id}>
+                    <button type="button" className={`team-card ${flag ? 'needs-attention' : ''}`} onClick={() => setOpenStaffId(s.t.id)} aria-label={`${s.t.name}, ${s.t.is_active ? 'active' : 'inactive'}: open details`}>
+                      <span className="team-card-head">
+                        <span className="team-card-avatar" aria-hidden>{initials(s.t.name)}</span>
+                        <span className="team-card-who">
+                          <span className="team-card-name-row">
+                            <span className="team-card-name">{s.t.name}</span>
+                            <span className={`chip ${s.t.is_active ? 'delivered' : 'muted'}`}>{s.t.is_active ? 'Active' : 'Inactive'}</span>
+                          </span>
+                          <span className="team-card-sub">
+                            {s.t.region}
+                            {s.t.is_active && s.callsToday === 0 && <span className="chip pending">No calls today</span>}
+                          </span>
+                        </span>
+                        <ChevronRight size={18} className="team-card-chev" aria-hidden />
+                      </span>
+                      <span className="team-card-stats">
+                        <span><span className="k">Calls</span><span className="v">{s.calls}</span></span>
+                        <span><span className="k">Connect</span><span className="v">{s.calls ? `${s.connectRate}%` : '—'}</span></span>
+                        <span><span className="k">Open Leads</span><span className="v">{s.openLeads}</span></span>
+                        <span><span className="k">Follow Up</span><span className="v">{s.pendingFollowups} / <span className={s.overdueFollowups ? 'text-warn' : undefined}>{s.overdueFollowups}</span></span></span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
           <div className="panel-note">Click a telecaller for details. Follow-ups show pending / overdue. Calls, sales and revenue are for {PERIOD_LABEL[period].toLowerCase()}.</div>
         </div>
-      </div>
-
-      <div className="panel-note">
-        Sample data. The backend doesn&apos;t yet have a team-wide call log, call outcome and duration, call targets, or who is online right now.
       </div>
 
       {openStaff && (

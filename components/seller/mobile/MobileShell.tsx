@@ -11,6 +11,7 @@ import { AppLink, useNav } from '../app/nav';
 import { SCREEN_TAB, SCREEN_TITLE, SUB_SCREENS } from '../app/routes';
 import { useSeller } from '../app/SellerProvider';
 import { ConfirmOrderSheet, ProductFormSheet, RestockSheet } from './dialogs';
+import TopNav from './TopNav';
 import HomeScreen from './HomeScreen';
 import OrdersScreen from './OrdersScreen';
 import OrderDetailScreen from './OrderDetailScreen';
@@ -68,7 +69,7 @@ function useTyping(): boolean {
 
 export default function MobileShell() {
   const { route, back } = useNav();
-  const { user, counts, stockAlerts, unreadCount, toast, dismissToast, syncing, refresh } = useSeller();
+  const { counts, stockAlerts, unreadCount, toast, dismissToast, syncing, refresh } = useSeller();
   const online = useOnline();
   const typing = useTyping();
   const [scrolled, setScrolled] = useState(false);
@@ -76,6 +77,7 @@ export default function MobileShell() {
   const tab = SCREEN_TAB[route.screen];
   const sub = SUB_SCREENS.has(route.screen);
   const hideNav = route.screen === 'order' || typing;
+  const inlineHeading = route.screen === 'home' || route.screen === 'more';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -106,28 +108,23 @@ export default function MobileShell() {
   return (
     <div className={`sx sx-app ${hideNav ? 'sx-no-nav' : ''}`}>
       <a href="#sx-main" className="sx-skip">Skip to content</a>
-      <header className={`sx-header ${scrolled ? 'sx-header-scrolled' : ''}`}>
-        <div className="sx-header-inner">
-          {sub ? (
-            <button type="button" className="sx-icon-btn sx-back" onClick={back} aria-label="Back"><ArrowLeft size={22} aria-hidden /></button>
-          ) : route.screen === 'home' ? null : (
-            <AppLink href="/seller" className="sx-emblem-link" aria-label="Home"><img src="/brand/manikstu-emblem.png" alt="" width={32} height={32} /></AppLink>
-          )}
-          {route.screen === 'home' ? (
-            <AppLink href="/seller" className="sx-wordmark-link" aria-label="Manikstu Seller, home">
-              <img src="/brand/manikstu-logo-glossy.png" alt="Manikstu" className="sx-wordmark" />
-            </AppLink>
-          ) : (
+      <TopNav />
+      <header className={`sx-header ${scrolled && !inlineHeading ? 'sx-header-scrolled' : ''}`}>
+        {/* Home and More show their heading and the bell in their own first row; other screens show them here. */}
+        {!inlineHeading && (
+          <div className="sx-header-inner">
+            {sub && (
+              <button type="button" className="sx-icon-btn sx-back" onClick={back} aria-label="Back"><ArrowLeft size={22} aria-hidden /></button>
+            )}
             <h1 className="sx-header-title">{SCREEN_TITLE[route.screen]}</h1>
-          )}
-          <div className="sx-header-actions">
-            <AppLink href="/seller/notifications" className="sx-icon-btn sx-bell" aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}>
-              <Bell size={21} aria-hidden />
-              {unreadCount > 0 && <span className="sx-bell-badge" aria-hidden>{unreadCount > 9 ? '9+' : unreadCount}</span>}
-            </AppLink>
-            <AppLink href="/seller/profile" className="sx-avatar sx-avatar-sm" aria-label="Seller profile">{user.initials}</AppLink>
+            <div className="sx-header-actions">
+              <AppLink href="/seller/notifications" className="sx-icon-btn sx-bell" aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}>
+                <Bell size={21} aria-hidden />
+                {unreadCount > 0 && <span className="sx-bell-badge" aria-hidden>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+              </AppLink>
+            </div>
           </div>
-        </div>
+        )}
         {syncing && <div className="sx-progress" role="progressbar" aria-label="Refreshing" />}
         {!online ? (
           <div className="sx-net sx-net-off" role="status">
