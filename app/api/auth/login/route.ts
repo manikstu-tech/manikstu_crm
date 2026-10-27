@@ -53,7 +53,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server is misconfigured (missing AUTH_SECRET). Contact an admin.' }, { status: 500 });
     }
 
-    const res = NextResponse.json({ redirectTo: ROLE_HOME[user.role as Role], mustChangePassword: !!data.mustChangePassword });
+    // A temporary password set by the head must be replaced before anything else.
+    const mustChangePassword = !!data.mustChangePassword;
+    const res = NextResponse.json({ redirectTo: mustChangePassword ? '/change-password' : ROLE_HOME[user.role as Role], mustChangePassword });
     res.cookies.set(SESSION_COOKIE, sessionToken, cookieBase);
     res.cookies.set(TOKEN_COOKIE, apiToken, cookieBase);
     return res;
