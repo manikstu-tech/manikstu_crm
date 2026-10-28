@@ -1,37 +1,58 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Download, FileSpreadsheet, FileText, Upload } from 'lucide-react';
-import { LEAD_SOURCES, TELECALLERS, VERTICALS, TrackerLead } from '../../data/managerDashboard';
+import { CheckCircle2, Download, FileSpreadsheet, FileText, Upload } from 'lucide-react';
+import { LEAD_SOURCES, NAME_MISSING, TELECALLERS, VERTICALS, TrackerLead } from '../../data/managerDashboard';
 import {
   CheckedCandidate,
   STATUS_LABEL,
   checkRows,
   downloadLeadTemplate,
   fileKind,
+  isDuplicateStatus,
   parseLeadRows,
   readFileRows,
 } from '../../lib/leadImport';
+import type { ImportSummary } from '../../lib/useTracker';
 import { isOpenLead, verticalName } from './tcData';
 import CardTable from '../CardTable';
 
-/** A lead ready to be created: everything except the id, which the dashboard assigns. */
-export type NewLead = Omit<TrackerLead, 'id' | 'stage_id' | 'created_at' | 'updated_at'>;
+/** A lead ready to be created: everything except the id, which the dashboard assigns. `line` is its row in the file. */
+export type NewLead = Omit<TrackerLead, 'id' | 'stage_id' | 'created_at' | 'updated_at'> & { line?: number };
+
+/** What saving the import did: the server's error, or what it saved and skipped. */
+export interface ImportOutcome {
+  error: string | null;
+  summary: ImportSummary | null;
+}
 
 const IMPORTED_SOURCE = 'Imported file';
 
 interface Props {
   leads: TrackerLead[];
-  /** Resolves to the server's error message, or null once the leads are saved. */
-  onCreate: (leads: NewLead[]) => Promise<string | null>;
+  /** Saves the ready rows; resolves to the server's error, or to what was saved. */
+  onCreate: (leads: NewLead[]) => Promise<ImportOutcome>;
   onClose: () => void;
+  /** After the result is read: show the imported leads (e.g. switch to New imports). */
+  onDone: () => void;
 }
 
-export default function ImportLeads({ leads, onCreate, onClose }: Props) {
+/** The import result, as the four counts the plan asks for, with the rows behind each. */
+interface ImportResult {
+  imported: number;
+  nameMissing: number;
+  duplicates: { row: number; message: string }[];
+  skipped: { row: number; message: string }[];
+  /** Rows the server refused while saving (normally none: the preview runs the same checks). */
+  failed: { row: number; message: string }[];
+}
+
+export default function ImportLeads({ leads, onCreate, onClose, onDone }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [rows, setRows] = useState<CheckedCandidate[] | null>(null);
   const [defaultVertical, setDefaultVertical] = useState<number>(VERTICALS[0].id);
@@ -42,6 +63,7 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
 
   const handleFile = async (file: File) => {
     setError(null);
+    setSaveError(null);
     setRows(null);
     setFileName(file.name);
     setBusy(true);
@@ -51,8 +73,8 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
       if (candidates.length === 0) {
         throw new Error(
           fileKind(file.name) === 'pdf'
-            ? 'No names with phone numbers were found in this PDF. Scanned (photo) PDFs can’t be read; use the Excel template instead.'
-            : 'No leads were found. Make sure the file has a Name and a Phone column (download the template to see the layout).',
+            ? 'No phone numbers were found in this PDF. Scanned (photo) PDFs can’t be read; use the Excel template instead.'
+            : 'No leads were found. Make sure the file has a Phone column (download the template to see the layout).',
         );
       }
       setRows(checkRows(candidates, new Set(leads.map(l => l.phone))));
@@ -83,24 +105,76 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
   }, [rows, leads, assign]);
 
   const ready = planned.filter(p => p.row.status === 'ready');
-  const problems = planned.filter(p => p.row.status !== 'ready');
+  const readyNameless = ready.filter(p => p.row.nameMissing).length;
+  const duplicates = planned.filter(p => isDuplicateStatus(p.row.status));
+  const skipped = planned.filter(p => p.row.status !== 'ready' && !isDuplicateStatus(p.row.status));
   const perCaller = Array.from(ready.reduce((m, p) => m.set(p.callerId!, (m.get(p.callerId!) ?? 0) + 1), new Map<number, number>()));
+
+  const describe = (r: CheckedCandidate) => ({ row: r.line, message: `Row ${r.line}${r.phone && !r.phone.startsWith('?') ? ` (${r.phone})` : ''}: ${r.problem ?? STATUS_LABEL[r.status].toLowerCase()}` });
 
   const create = async () => {
     setSaving(true);
     setSaveError(null);
-    setSaveError(await onCreate(ready.map(({ row, callerId }) => ({
+    const outcome = await onCreate(ready.map(({ row, callerId }) => ({
+      line: row.line,
       vertical_id: row.verticalId ?? defaultVertical,
       assigned_to: callerId!,
       customer_name: row.name,
       phone: row.phone!,
       source: row.source ?? defaultSource,
       reason: row.reason,
-    }))));
+    })));
     setSaving(false);
+    if (outcome.error) {
+      setSaveError(outcome.error);
+      return;
+    }
+    // Rows found in the preview plus any the server skipped because someone added the number meanwhile.
+    const serverDuplicates = outcome.summary?.duplicates ?? [];
+    const savedNameless = outcome.summary ? outcome.summary.name_missing : readyNameless;
+    setResult({
+      imported: outcome.summary?.imported ?? ready.length,
+      nameMissing: savedNameless,
+      duplicates: [...duplicates.map(p => describe(p.row)), ...serverDuplicates],
+      skipped: skipped.map(p => describe(p.row)),
+      failed: outcome.summary?.failed ?? [],
+    });
   };
 
   const callerName = (id: number | null) => (id === 0 ? 'Unassigned' : TELECALLERS.find(t => t.id === id)?.name ?? '—');
+
+  if (result) {
+    return (
+      <div className="import-leads">
+        <div className="import-result" role="status">
+          <CheckCircle2 size={28} aria-hidden />
+          <div>
+            <strong>Import finished{fileName ? ` · ${fileName}` : ''}</strong>
+            <div className="loc">{result.failed.length ? `${result.failed.length} row${result.failed.length === 1 ? ' was' : 's were'} refused while saving; the other rows were saved.` : 'Every valid row was saved.'}</div>
+          </div>
+        </div>
+        <div className="import-counts">
+          <div className="import-count good"><span className="n">{result.imported}</span><span>Imported</span>
+            {result.nameMissing > 0 && <small>{result.nameMissing} with Name Missing</small>}</div>
+          <div className="import-count"><span className="n">{result.duplicates.length}</span><span>Duplicates</span><small>already leads or repeated in the file</small></div>
+          <div className="import-count"><span className="n">{result.skipped.length}</span><span>Skipped</span><small>no valid mobile, or a name or reason to fix</small></div>
+          <div className={`import-count ${result.failed.length ? 'bad' : ''}`}><span className="n">{result.failed.length}</span><span>Failed</span><small>refused while saving</small></div>
+        </div>
+        {[...result.duplicates, ...result.skipped, ...result.failed].length > 0 && (
+          <details className="import-details" open={result.failed.length > 0}>
+            <summary>Show the rows that were not imported</summary>
+            <ul>{[...result.duplicates, ...result.skipped, ...result.failed].sort((a, b) => a.row - b.row).map(r => <li key={`${r.row}-${r.message}`}>{r.message}</li>)}</ul>
+          </details>
+        )}
+        {result.nameMissing > 0 && (
+          <p className="loc">Leads with Name Missing are marked Incomplete. Use Edit on Leads &amp; Assignment to add the names.</p>
+        )}
+        <div className="modal-footer" style={{ marginTop: 16 }}>
+          <button type="button" className="btn-primary" onClick={onDone}>Done</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="import-leads">
@@ -135,8 +209,9 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
           {error && <div className="inline-alert" style={{ marginTop: 12 }}>{error}</div>}
           <div className="import-help">
             <p>
-              Each row needs a <strong>name</strong> and a <strong>10-digit mobile number</strong>. Product, source, reason and telecaller are optional:
-              column names can be in any order (e.g. “Farmer name”, “Mobile”, “Interested in”, “Assign to”).
+              Each row needs a <strong>10-digit mobile number</strong>. A row without a name is still imported as <strong>{NAME_MISSING}</strong> (marked Incomplete) so you can add the name later.
+              A name, when given, must be 2–80 characters with letters (“N/A”, “-” or “unknown” count as no name); a reason can be up to 500 characters.
+              Product, source, reason and telecaller are optional: column names can be in any order (e.g. “Farmer name”, “Mobile”, “Interested in”, “Assign to”).
             </p>
             <p>PDFs must contain real text, like a table exported from Excel or this app. Scanned photos of paper lists can’t be read.</p>
             <button className="btn-secondary btn-small" onClick={() => downloadLeadTemplate()}>
@@ -151,7 +226,9 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
           <div className="import-summary">
             <span className="loc">{fileName}</span>
             <span className="chip delivered">{ready.length} ready</span>
-            {problems.length > 0 && <span className="chip pending">{problems.length} skipped</span>}
+            {readyNameless > 0 && <span className="chip pending">{readyNameless} name missing</span>}
+            {duplicates.length > 0 && <span className="chip muted">{duplicates.length} duplicate{duplicates.length === 1 ? '' : 's'}</span>}
+            {skipped.length > 0 && <span className="chip pending">{skipped.length} skipped</span>}
             <button className="link-btn clear-alert" onClick={() => { setRows(null); setFileName(null); }}>Choose another file</button>
           </div>
 
@@ -193,20 +270,24 @@ export default function ImportLeads({ leads, onCreate, onClose }: Props) {
                 {planned.map(({ row, callerId }) => (
                   <tr key={row.line} className={row.status === 'ready' ? undefined : 'row-skipped'}>
                     <td>{row.line}</td>
-                    <td className="cust">{row.name || <span className="text-warn">—</span>}</td>
+                    <td className="cust">{row.name || <span className="chip pending">{NAME_MISSING}</span>}</td>
                     <td>{row.phone ? row.phone.replace(/^\?/, '') : '—'}</td>
                     <td>{row.verticalId ? verticalName(row.verticalId) : <span className="loc">{verticalName(defaultVertical)}</span>}</td>
                     <td>{row.source ?? <span className="loc">{defaultSource}</span>}</td>
                     <td>{row.reason ? <div className="lead-reason" title={row.reason}>{row.reason}</div> : <span className="loc">—</span>}</td>
                     <td>{row.status === 'ready' ? callerName(callerId) : '—'}</td>
-                    <td><span className={`chip ${row.status === 'ready' ? 'delivered' : row.status.startsWith('already') || row.status.startsWith('duplicate') ? 'muted' : 'pending'}`}>{STATUS_LABEL[row.status]}</span></td>
+                    <td>
+                      <span className={`chip ${row.status === 'ready' ? 'delivered' : isDuplicateStatus(row.status) ? 'muted' : 'pending'}`}>{STATUS_LABEL[row.status]}</span>
+                      {row.problem && <div className="loc text-warn">{row.problem}</div>}
+                      {row.status === 'ready' && row.nameMissing && <div className="loc">Incomplete</div>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </CardTable>
           <div className="loc" style={{ marginTop: 8 }}>
-            Grey product and source text are the defaults above. Skipped rows won’t be created: fix them in the file and import again.
+            Grey product and source text are the defaults above. Duplicates and skipped rows won’t be created: fix them in the file and import again.
           </div>
         </>
       )}

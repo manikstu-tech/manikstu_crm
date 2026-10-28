@@ -1,18 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LEAD_SOURCES, TELECALLERS, TODAY } from '../../data/managerDashboard';
-import { CalendarDays, ChevronDown, FileSpreadsheet, Shuffle, SlidersHorizontal, Upload, UserCheck, X } from 'lucide-react';
+import { LEAD_SOURCES, NAME_MISSING, TELECALLERS, TODAY, isIncompleteLead } from '../../data/managerDashboard';
+import { CalendarDays, ChevronDown, FileSpreadsheet, Pencil, Shuffle, SlidersHorizontal, Upload, UserCheck, X } from 'lucide-react';
 import { ago, daysBefore, shortDate } from '../../lib/format';
 import Modal from '../Modal';
-import ImportLeads, { NewLead } from './ImportLeads';
+import ImportLeads, { ImportOutcome, NewLead } from './ImportLeads';
+import EditLead from './EditLead';
 import { EmptyRow, StatusChip } from './shared';
 import { TeamData, callerOf, callerName, isOpenLead, isWonLead, lastCallFor, stageName, stageOf } from './tcData';
 import ExecDistributionTable from './ExecDistributionTable';
 import type { WorkflowSummary } from '../../lib/leadWorkflow';
-import { assignmentOf, type TrackerState } from '../../lib/trackerOps';
-import { ASSIGNED_DATE_OPTIONS, AssignedDateKey, DayRange, assignedRange, customRangeError, inDayRange, istToday, rangeLabel } from '../../lib/assignedDate';
+import { assignmentOf, type LeadPatch, type TrackerState } from '../../lib/trackerOps';
+import { ASSIGNED_DATE_OPTIONS, AssignedDateKey, DayRange, assignedRange, customRangeError, inDayRange, istDateTime, istToday, rangeLabel } from '../../lib/assignedDate';
 import CardTable from '../CardTable';
 
 type Tab = 'open' | 'new-imports' | 'untouched' | 'completed' | 'all';
+/** Whether the lead's details are complete (name, phone, product line). Separate from Status, which is about the work. */
+type Detail = 'all' | 'incomplete' | 'complete';
+const DETAILS: { key: Detail; label: string; hint: string }[] = [
+  { key: 'all', label: 'All', hint: 'Complete and incomplete' },
+  { key: 'incomplete', label: 'Incomplete', hint: `Missing details, e.g. ${NAME_MISSING}` },
+  { key: 'complete', label: 'Complete', hint: 'Name, phone and product line' },
+];
 /** The status the page opens on. It isn't shown as a filter tag: only statuses picked after that are. */
 const START_TAB: Tab = 'open';
 const PAGE_SIZE = 20;
@@ -26,17 +34,21 @@ interface Props {
   searchQuery: string;
   initialCaller?: number;
   onReassign: (leadIds: number[], toCallerId: number) => void | Promise<void>;
-  /** Resolves to the error to show in the import window, or null once the leads are saved. */
-  onImport: (leads: NewLead[]) => Promise<string | null>;
+  /** Resolves to the error to show in the import window, or to what was saved. */
+  onImport: (leads: NewLead[]) => Promise<ImportOutcome>;
+  /** Edit a lead's details. Resolves to the error to show, or null once saved. */
+  onUpdateLead: (leadId: number, patch: LeadPatch) => Promise<string | null>;
   onToast: (message: string) => void;
 }
 
 /** Import leads and hand them out to the calling executives. */
-export default function TeamLeads({ data, execSummary, trackerState, searchQuery, initialCaller, onReassign, onImport, onToast }: Props) {
+export default function TeamLeads({ data, execSummary, trackerState, searchQuery, initialCaller, onReassign, onImport, onUpdateLead, onToast }: Props) {
   const [importOpen, setImportOpen] = useState(false);
   const [tab, setTab] = useState<Tab>(START_TAB);
   const [caller, setCaller] = useState<number | 'all'>(initialCaller ?? 'all');
   const [source, setSource] = useState('all');
+  const [detail, setDetail] = useState<Detail>('all');
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [target, setTarget] = useState<number>(TELECALLERS.find(t => t.is_active)?.id ?? 0);
@@ -88,6 +100,7 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
     .filter(l => tabTest(l))
     .filter(l => caller === 'all' || l.assigned_to === caller)
     .filter(l => source === 'all' || l.source === source)
+    .filter(l => detail === 'all' || (detail === 'incomplete') === isIncompleteLead(l))
     .filter(l => !q || [l.customer_name, l.phone, l.reason ?? ''].some(v => v.toLowerCase().includes(q)))
     .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id); // newest first
 
@@ -137,15 +150,15 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
     setSelected(new Set());
   };
 
-  const createImported = async (newLeads: NewLead[]) => {
-    const error = await onImport(newLeads);
-    if (error) return error; // keep the window open so the rows can be fixed
+  // The import window shows its result once saved; Done closes it and shows the new imports.
+  const createImported = (newLeads: NewLead[]) => onImport(newLeads);
+  const importDone = () => {
     setImportOpen(false);
     setTab('new-imports');
     setCaller('all');
     reset();
-    return null;
   };
+  const editing = editingId === null ? null : data.leads.find(l => l.id === editingId) ?? null;
 
   // Every source in use, including "Imported file" and anything else brought in by an import
   const sources = Array.from(new Set([...LEAD_SOURCES, ...data.leads.map(l => l.source)]));
@@ -154,11 +167,12 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
   const importedToday = count(l => l.created_at.startsWith(TODAY) && l.source === 'Imported file');
 
   // Active filters, shown as removable tags
-  const clearFilters = () => { setTab('all'); setCaller('all'); setSource('all'); reset(); };
+  const clearFilters = () => { setTab('all'); setCaller('all'); setSource('all'); setDetail('all'); reset(); };
   const tags = [
     tab !== 'all' && tab !== START_TAB && { key: 'status', k: 'Status', v: TABS.find(t => t.key === tab)!.label, clear: () => { setTab('all'); reset(); } },
     caller !== 'all' && { key: 'caller', k: 'Executive', v: callerName(caller), clear: () => { setCaller('all'); reset(); } },
     source !== 'all' && { key: 'source', k: 'Source', v: source, clear: () => { setSource('all'); reset(); } },
+    detail !== 'all' && { key: 'detail', k: 'Details', v: DETAILS.find(d => d.key === detail)!.label, clear: () => { setDetail('all'); reset(); } },
   ].filter(Boolean) as { key: string; k: string; v: string; clear: () => void }[];
   const activeCount = tags.length;
 
@@ -205,6 +219,17 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
                     <span className="lf-radio" />
                     <span className="lf-opt-text">{t.label}<small>{t.hint}</small></span>
                     <span className="lf-n">{countDated(t.test)}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="lf-section">
+                <div className="lf-title">Details</div>
+                {DETAILS.map(d => (
+                  <button key={d.key} className={`lf-option ${detail === d.key ? 'on' : ''}`} onClick={() => { setDetail(d.key); reset(); }}>
+                    <span className="lf-radio" />
+                    <span className="lf-opt-text">{d.label}<small>{d.hint}</small></span>
+                    <span className="lf-n">{countDated(l => d.key === 'all' || (d.key === 'incomplete') === isIncompleteLead(l))}</span>
                   </button>
                 ))}
               </div>
@@ -302,11 +327,11 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
             <thead>
               <tr>
                 <th><input type="checkbox" checked={allOnPage} onChange={togglePage} aria-label="Select all on this page" /></th>
-                <th>Lead</th><th>Reason</th><th>Calling executive</th><th>Stage</th><th>Source</th><th>Last call</th><th>Last touched</th>
+                <th>Lead</th><th>Reason</th><th>Calling executive</th><th>Stage</th><th>Source</th><th>Last call</th><th>Last touched</th><th aria-label="Edit" />
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && <EmptyRow cols={8} text={range ? 'No leads were assigned in this period with these filters.' : 'No leads match these filters.'} />}
+              {rows.length === 0 && <EmptyRow cols={9} text={range ? 'No leads were assigned in this period with these filters.' : 'No leads match these filters.'} />}
               {rows.map(l => {
                 const last = lastCallFor(l.id, data.activities);
                 const owner = callerOf(l.assigned_to);
@@ -314,16 +339,27 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
                 return (
                   <tr key={l.id} className={selected.has(l.id) ? 'row-selected' : undefined}>
                     <td><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggle(l.id)} aria-label={`Select ${l.customer_name}`} /></td>
-                    <td className="cust">{l.customer_name}<div className="loc">{l.phone} · added {shortDate(l.created_at)}</div></td>
+                    <td className="cust">
+                      {l.name_missing ? <span className="chip pending">{NAME_MISSING}</span> : l.customer_name}
+                      {isIncompleteLead(l) && !l.name_missing && <span className="chip pending lead-incomplete">Incomplete</span>}
+                      <div className="loc">#{l.id} · {l.phone} · added {shortDate(l.created_at)}</div>
+                      {l.name_missing && <div className="loc text-warn">Incomplete</div>}
+                    </td>
                     <td>{l.reason ? <div className="lead-reason" title={l.reason}>{l.reason}</div> : <span className="loc">—</span>}</td>
                     <td>
-                      {owner?.name ?? '—'}
+                      {owner?.name ?? <span className="loc">Unassigned</span>}
                       {owner && !owner.is_active && <div><span className="chip muted">Inactive</span></div>}
+                      {owner && <div className="loc">since {istDateTime(assignedAt(l))}</div>}
                     </td>
                     <td><span className={`chip ${isWonLead(l) ? 'delivered' : stageOf(l.stage_id)?.name === 'Lost' ? 'muted' : 'confirmed'}`}>{stageName(l.stage_id)}</span></td>
                     <td>{l.source === 'Website' ? <span className="source-tag website">Website</span> : l.source}</td>
                     <td>{last ? <><StatusChip status={last.outcome} /><div className="loc">{ago(last.created_at)}</div></> : <span className="loc">Never</span>}</td>
                     <td className={stale ? 'text-warn' : undefined}>{ago(l.updated_at)}</td>
+                    <td>
+                      <button type="button" className="btn-secondary btn-small lead-edit-btn" onClick={() => setEditingId(l.id)} aria-label={`Edit lead #${l.id}`}>
+                        <Pencil size={13} aria-hidden /> Edit
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -340,8 +376,18 @@ export default function TeamLeads({ data, execSummary, trackerState, searchQuery
       </div>
 
       <Modal isOpen={importOpen} onClose={() => setImportOpen(false)} title="Import leads from Excel or PDF" wide>
-        <ImportLeads leads={data.leads} onCreate={createImported} onClose={() => setImportOpen(false)} />
+        <ImportLeads leads={data.leads} onCreate={createImported} onClose={() => setImportOpen(false)} onDone={importDone} />
       </Modal>
+
+      <EditLead
+        lead={editing}
+        called={!!editing && data.activities.some(a => a.lead_id === editing.id)}
+        ownerName={editing ? callerOf(editing.assigned_to)?.name ?? 'Unassigned' : ''}
+        assignedAt={editing && editing.assigned_to ? assignedAt(editing) : null}
+        sources={sources}
+        onSave={onUpdateLead}
+        onClose={() => setEditingId(null)}
+      />
     </>
   );
 }
