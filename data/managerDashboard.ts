@@ -27,7 +27,21 @@ export interface TrackerLead {
   reason?: string | null;
   created_at: string;
   updated_at: string;
+  /** No name on record: customer_name then reads "Name Missing" (sent by the backend). */
+  name_missing?: boolean;
+  /** Name, phone and product line all present. Absent on older data, which always had them. */
+  complete?: boolean;
+  /** Which of those are missing, e.g. ['name']. */
+  missing?: string[];
+  /** When and by whom the details were last edited (null if never). */
+  edited_at?: string | null;
+  edited_by?: string | null;
 }
+
+/** "Name Missing" for a lead with no name on record. */
+export const NAME_MISSING = 'Name Missing';
+/** A lead still missing details it needs (only the name can be missing today). */
+export const isIncompleteLead = (l: Pick<TrackerLead, 'complete' | 'name_missing'>) => l.complete === false || l.name_missing === true;
 
 export type CallOutcome = 'Connected' | 'No answer' | 'Busy' | 'Wrong number' | 'Not interested';
 

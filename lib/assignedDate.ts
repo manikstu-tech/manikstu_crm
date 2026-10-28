@@ -67,6 +67,15 @@ export const inDayRange = (ts: string, range: DayRange | null) => {
   return day !== null && day >= range.from && day <= range.to;
 };
 
+/** A tracker stamp (UTC, no zone) as India date and time, e.g. "24 Oct, 14:02". */
+export function istDateTime(ts: string | null | undefined): string {
+  if (!ts) return '—';
+  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/.test(ts);
+  const d = new Date(hasZone ? ts : `${ts.length === 10 ? `${ts}T00:00` : ts}Z`);
+  if (Number.isNaN(d.getTime())) return ts;
+  return new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+}
+
 /** "24 Oct", or "1 Oct – 24 Oct" for the filter's tag. */
 export function rangeLabel(range: DayRange): string {
   const f = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });

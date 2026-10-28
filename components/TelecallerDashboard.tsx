@@ -40,10 +40,10 @@ import {
   WebEnquiry,
 } from '../data/managerDashboard';
 import { detectVertical } from '../lib/leadImport';
-import type { NewEnquiryData, TrackerState } from '../lib/trackerOps';
+import type { LeadPatch, NewEnquiryData, TrackerState } from '../lib/trackerOps';
 import { useSharedEnquiries, useTracker } from '../lib/useTracker';
 import SyncBadge from './SyncBadge';
-import type { NewLead } from './telecaller/ImportLeads';
+import type { ImportOutcome, NewLead } from './telecaller/ImportLeads';
 import { TeamData, isOverdue, staffStats, stuckLeadCount, teamAlerts } from './telecaller/tcData';
 import type { SessionUser } from '../lib/session';
 
@@ -295,10 +295,25 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
     }
   };
 
-  /** Create leads from an imported Excel / PDF file, in the first stage of their product line. Returns the error to show, or null. */
-  const handleImport = async (newLeads: NewLead[]): Promise<string | null> => {
+  /**
+   * Create leads from an imported Excel / PDF file, in the first stage of their product line. Resolves to the error to
+   * show, or to what was saved. Numbers someone added since the preview, and rows the server refuses, are reported; the
+   * valid rows are still saved.
+   */
+  const handleImport = async (newLeads: NewLead[]): Promise<ImportOutcome> => {
     try {
-      const { message } = await sync.run({ type: 'import-leads', leads: newLeads });
+      const { message, summary } = await sync.run({ type: 'import-leads', leads: newLeads, skipDuplicates: true, skipInvalid: true });
+      showToast(message);
+      return { error: null, summary: summary ?? null };
+    } catch (e) {
+      return { error: (e as Error).message, summary: null };
+    }
+  };
+
+  /** Edit a lead's details on the same record. Resolves to the error to show in the form, or null once saved. */
+  const handleUpdateLead = async (leadId: number, patch: LeadPatch): Promise<string | null> => {
+    try {
+      const { message } = await sync.run({ type: 'update-lead', leadId, patch });
       showToast(message);
       return null;
     } catch (e) {
@@ -346,7 +361,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
             />
           )}
           {activePage === 'leads' && (
-            <TeamLeads key={`leads-${focusCaller ?? 'all'}`} data={data} execSummary={workflow} trackerState={sync.data} searchQuery={searchQuery} initialCaller={focusCaller} onReassign={handleReassign} onImport={handleImport} onToast={showToast} />
+            <TeamLeads key={`leads-${focusCaller ?? 'all'}`} data={data} execSummary={workflow} trackerState={sync.data} searchQuery={searchQuery} initialCaller={focusCaller} onReassign={handleReassign} onImport={handleImport} onUpdateLead={handleUpdateLead} onToast={showToast} />
           )}
           {activePage === 'followups' && (
             <TeamFollowups key={`fu-${focusCaller ?? 'all'}`} data={data} searchQuery={searchQuery} initialCaller={focusCaller} onReassign={handleReassign} onToast={showToast} />

@@ -8,7 +8,7 @@
 
 import {
   FOLLOWUPS, LEAD_ACTIVITIES, STAGES, TELECALLERS, TRACKER_LEADS, VERTICALS, WEB_ENQUIRIES,
-  CUSTOMER_RESPONSES,
+  CUSTOMER_RESPONSES, NAME_MISSING,
   CallOutcome, CustomerResponse, EnquiryStatus, EnquiryType, Followup, LeadActivity, TrackerLead, WebEnquiry,
 } from '../data/managerDashboard';
 import { nowStamp } from './format';
@@ -98,9 +98,12 @@ export interface ReportEdit {
 }
 
 export type TrackerAction =
-  | { type: 'import-leads'; leads: NewLeadInput[] }
+  /** skipDuplicates: save the rest when some numbers are already leads (they come back in the result's summary). */
+  | { type: 'import-leads'; leads: (NewLeadInput & { line?: number })[]; skipDuplicates?: boolean; skipInvalid?: boolean }
   | { type: 'add-lead'; lead: NewLeadInput }
   | { type: 'assign'; leadIds: number[]; callerId: number }
+  /** Edit a lead's details on the same record (head and manager). Only the fields given change. */
+  | { type: 'update-lead'; leadId: number; patch: LeadPatch }
   | { type: 'log-call'; call: CallInput }
   | { type: 'import-report'; calls: CallInput[] }
   | { type: 'complete-followup'; followupId: number }
@@ -127,6 +130,7 @@ export const ALLOWED: Record<TrackerAction['type'], ActorRole[]> = {
   'import-leads': ['telecaller', 'manager'],
   'add-lead': ['telecaller', 'manager'],
   assign: ['telecaller', 'manager'],
+  'update-lead': ['telecaller', 'manager'],
   'log-call': ['calling-executive'],
   'import-report': ['calling-executive'],
   'complete-followup': ['calling-executive'],
@@ -165,7 +169,8 @@ function checkNewLead(l: NewLeadInput, index?: number): NewLeadInput {
   const where = index === undefined ? '' : ` (row ${index + 1})`;
   const name = String(l.customer_name ?? '').replace(/\s+/g, ' ').trim();
   const phone = String(l.phone ?? '').replace(/\D/g, '').slice(-10);
-  if (name.length < 2 || name.length > 80) throw new TrackerError(`Lead name is missing${where}.`);
+  // No name is allowed when the mobile is valid: the lead is kept as "Name Missing" (incomplete).
+  if (name && (name.length < 2 || name.length > 80)) throw new TrackerError(`Lead name must be 2–80 characters${where}.`);
   if (!/^[6-9]\d{9}$/.test(phone)) throw new TrackerError(`Phone number is not a valid mobile${where}.`);
   if (!VERTICALS.some(v => v.id === l.vertical_id)) throw new TrackerError(`Unknown product line${where}.`);
   // 0 = leave the lead unassigned; otherwise it must go to an active telecaller.
@@ -180,10 +185,24 @@ function createLeads(state: TrackerState, inputs: NewLeadInput[]): TrackerLead[]
   const phones = new Set(state.leads.map(l => l.phone));
   return inputs.map((raw, i) => {
     const l = checkNewLead(raw, inputs.length > 1 ? i : undefined);
-    if (phones.has(l.phone)) throw new TrackerError(`${l.customer_name} (${l.phone}) is already a lead.`);
+    if (phones.has(l.phone)) throw new TrackerError(`${l.customer_name || NAME_MISSING} (${l.phone}) is already a lead.`);
     phones.add(l.phone);
-    return { ...l, id: id++, stage_id: firstStage(l.vertical_id).id, created_at: now, updated_at: now };
+    return withCompleteness({ ...l, id: id++, stage_id: firstStage(l.vertical_id).id, created_at: now, updated_at: now });
   });
+}
+
+/** The lead with its name-missing / complete flags set as the backend sends them ("" name → "Name Missing"). */
+function withCompleteness(l: TrackerLead): TrackerLead {
+  const missing = l.customer_name && l.customer_name !== NAME_MISSING && !l.name_missing ? [] : ['name'];
+  return { ...l, customer_name: missing.length ? NAME_MISSING : l.customer_name, name_missing: missing.length > 0, complete: missing.length === 0, missing };
+}
+
+export interface LeadPatch {
+  customer_name?: string | null;
+  phone?: string;
+  vertical_id?: number;
+  source?: string;
+  reason?: string | null;
 }
 
 /** Adds one call to the state (activity, lead stage, follow-ups). Mutates the given arrays' copies. */
@@ -294,11 +313,38 @@ export function applyAction(current: TrackerState, action: TrackerAction, actor:
       const now = stamp();
       moved.forEach(l => { l.assigned_to = to.id; l.updated_at = now; });
       noteAssigned(moved.map(l => l.id));
-      // Open callbacks move with the lead.
+      // Open callbacks move with the lead and keep their status (a missed one stays missed).
       state.followups.forEach(f => {
-        if (ids.has(f.lead_id) && f.status !== 'done') { f.caller_id = to.id; f.status = 'pending'; }
+        if (ids.has(f.lead_id) && f.status !== 'done') f.caller_id = to.id;
       });
       return { state, message: `${moved.length === 1 ? moved[0].customer_name : `${moved.length} leads`} assigned to ${to.name}` };
+    }
+    case 'update-lead': {
+      const lead = state.leads.find(l => l.id === Number(action.leadId));
+      if (!lead) throw new TrackerError('That lead no longer exists.');
+      const p = action.patch ?? {};
+      if (p.customer_name !== undefined) {
+        const name = String(p.customer_name ?? '').replace(/\s+/g, ' ').trim();
+        if (name && (name.length < 2 || name.length > 80)) throw new TrackerError('Name must be 2–80 characters.');
+        lead.customer_name = name;
+        lead.name_missing = !name;
+      }
+      if (p.phone !== undefined) {
+        const phone = String(p.phone).replace(/\D/g, '').slice(-10);
+        if (!/^[6-9]\d{9}$/.test(phone)) throw new TrackerError('Enter a valid 10-digit mobile number (starting with 6, 7, 8 or 9).');
+        const other = state.leads.find(l => l.phone === phone && l.id !== lead.id);
+        if (other) throw new TrackerError(`${phone} is already another lead: ${other.customer_name} (lead #${other.id}).`);
+        lead.phone = phone;
+      }
+      if (p.vertical_id !== undefined && p.vertical_id !== lead.vertical_id) {
+        if (state.activities.some(a => a.lead_id === lead.id)) throw new TrackerError('The product line can’t change after the lead has been called. Add a new lead for the other product instead.');
+        lead.vertical_id = p.vertical_id;
+        lead.stage_id = firstStage(p.vertical_id).id;
+      }
+      if (p.source !== undefined) lead.source = String(p.source).slice(0, 40);
+      if (p.reason !== undefined) lead.reason = String(p.reason ?? '').trim().slice(0, 500) || null;
+      Object.assign(lead, withCompleteness(lead), { edited_at: stamp(), edited_by: actor.name });
+      return { state, message: `Lead #${lead.id} updated: ${lead.customer_name}` };
     }
     case 'log-call': {
       const name = applyCall(state, action.call, actor, true);

@@ -10,10 +10,19 @@ import { EnquiryPatch, TrackerAction, TrackerState, enquiriesOf } from './tracke
 
 const POLL_MS = 5000;
 
+/** What a file import saved: leads created (how many without a name) and rows skipped as already leads. */
+export interface ImportSummary {
+  imported: number;
+  name_missing: number;
+  duplicates: { row: number; message: string }[];
+  /** Rows the server refused, with the reason (the preview should already have caught them). */
+  failed?: { row: number; message: string }[];
+}
+
 export interface TrackerSync {
   data: TrackerState;
   /** Send a change; resolves with the server's message and any new lead ids, or rejects with a readable error. */
-  run: (action: TrackerAction) => Promise<{ message: string; createdIds: number[] }>;
+  run: (action: TrackerAction) => Promise<{ message: string; createdIds: number[]; summary?: ImportSummary | null }>;
   /** When the data was last confirmed up to date. */
   syncedAt: Date | null;
   offline: boolean;
@@ -83,7 +92,7 @@ export function useTracker(initial: TrackerState): TrackerSync {
     accept(body.state);
     setSyncedAt(new Date());
     setOffline(false);
-    return { message: body.message as string, createdIds: (body.createdIds ?? []) as number[] };
+    return { message: body.message as string, createdIds: (body.createdIds ?? []) as number[], summary: (body.summary ?? null) as ImportSummary | null };
   }, [accept]);
 
   return { data, run, syncedAt, offline };

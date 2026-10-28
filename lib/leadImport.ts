@@ -17,10 +17,17 @@ export interface ImportCandidate {
   callerId: number | null;
 }
 
-export type RowStatus = 'ready' | 'already-a-lead' | 'duplicate-in-file' | 'missing-phone' | 'invalid-phone' | 'missing-name';
+// A missing name does not stop a row: the mobile number identifies the lead, which is imported as "Name Missing"
+// (incomplete) and completed later with Edit. A row needs a valid mobile number that is not already a lead.
+// The name and reason rules are the server's (CRM_backend ValidateLeadInput), so a row marked Ready here is saved.
+export type RowStatus = 'ready' | 'already-a-lead' | 'duplicate-in-file' | 'missing-phone' | 'invalid-phone' | 'invalid-name' | 'reason-too-long';
 
 export interface CheckedCandidate extends ImportCandidate {
   status: RowStatus;
+  /** Ready, but with no name: imported as incomplete. */
+  nameMissing: boolean;
+  /** What is wrong with the row, in words, when the label alone does not say (e.g. which name rule). */
+  problem?: string;
 }
 
 export const STATUS_LABEL: Record<RowStatus, string> = {
@@ -29,8 +36,35 @@ export const STATUS_LABEL: Record<RowStatus, string> = {
   'duplicate-in-file': 'Duplicate in file',
   'missing-phone': 'No phone number',
   'invalid-phone': 'Invalid phone',
-  'missing-name': 'No name',
+  'invalid-name': 'Name not valid',
+  'reason-too-long': 'Reason too long',
 };
+
+export const NAME_MAX = 80;
+export const REASON_MAX = 500;
+
+/** Text written where the name should be when there is none (same list as the backend's Lead::cleanName). */
+const PLACEHOLDER_NAMES = ['na', 'n/a', 'nil', 'null', 'none', '-', '--', '---', 'unknown', 'no name', 'not available', 'not known', 'name'];
+
+/** The name as it will be saved: spaces collapsed, '' for blank or a placeholder ("N/A", "-", "unknown"…). */
+export function cleanName(text: string | null | undefined): string {
+  const name = String(text ?? '').replace(/\s+/g, ' ').trim();
+  return PLACEHOLDER_NAMES.includes(name.replace(/\./g, '').toLowerCase()) ? '' : name;
+}
+
+/** Any letter in any script (Odia, Hindi…), like the server's \p{L}. Built at runtime: the TS target rejects the u flag. */
+export const HAS_LETTER = new RegExp('\\p{L}', 'u');
+
+/** Why a (non-empty) name would be refused, or null. Same rules as the server: 2–80 characters, with letters. */
+export function nameProblem(name: string): string | null {
+  if (!name) return null;
+  if (name.length < 2 || name.length > NAME_MAX) return `Name must be 2–${NAME_MAX} characters (it has ${name.length}).`;
+  if (!HAS_LETTER.test(name)) return 'Name must contain letters.';
+  return null;
+}
+
+/** How the import window groups rows in its counts. */
+export const isDuplicateStatus = (s: RowStatus) => s === 'already-a-lead' || s === 'duplicate-in-file';
 
 // ---- Field helpers ------------------------------------------------------------------------
 
@@ -119,14 +153,22 @@ export function parseLeadRows(rows: string[][]): ImportCandidate[] {
       if (cells.join('|').toLowerCase() === headerText) continue; // header repeated on a later PDF page
       const get = (f: Field) => (cols[f] !== undefined ? cells[cols[f]!] ?? '' : '');
       const phoneCell = get('phone') || cells.find(c => normalizePhone(c)) || '';
-      if (!phoneCell && cells.filter(Boolean).length <= 1) continue; // titles, notes, page footers
-      const name = get('name') || cells.find((c, i) => i !== cols.phone && hasLetters(c) && !normalizePhone(c)) || '';
-      if (!name && !phoneCell) continue;
+      // A line with a single filled cell outside the Name and Reason columns is a title, note or page footer. Any
+      // other row is listed (and counted), so a row without a number is reported as such rather than vanishing.
+      const filled = cells.map((c, i) => (c ? i : -1)).filter(i => i >= 0);
+      if (!phoneCell && filled.length === 1 && filled[0] !== cols.name && filled[0] !== cols.reason) continue;
+      // With a Name column, the name is that cell or nothing: an empty Name cell must never borrow the product,
+      // source or reason as a name. Without one, only a cell that no other column claims can be the name.
+      const claimed = new Set(Object.values(cols));
+      const name = cols.name !== undefined
+        ? get('name')
+        : cells.find((c, i) => !claimed.has(i) && hasLetters(c) && !normalizePhone(c) && !detectVertical(c) && !detectSource(c)) || '';
       out.push({
         line,
         name,
         phone: phoneCell ? normalizePhone(phoneCell) ?? `?${phoneCell}` : null,
-        verticalId: detectVertical(get('product')) ?? detectVertical(cells.join(' ')),
+        // The product column first, then the other text in the row, but never the name ("Mallick" is not a lick block).
+        verticalId: detectVertical(get('product')) ?? detectVertical(cells.filter((_, i) => i !== cols.name && i !== cols.phone).join(' ')),
         source: detectSource(get('source')),
         reason: get('reason') || null,
         callerId: detectCaller(get('caller')),
@@ -143,7 +185,9 @@ export function parseLeadRows(rows: string[][]): ImportCandidate[] {
     const phone = normalizePhone(m[1]);
     const before = text.slice(0, m.index).replace(/^\s*(?:\d+\s*[.)\-:]|#\d+|s\.?\s*no\.?\s*\d+)\s*/i, '');
     const nameCell = cells.find(c => hasLetters(c) && !PHONE_IN_TEXT.test(c) && !detectVertical(c) && !detectSource(c) && !detectCaller(c));
-    const name = clean(before.replace(/[,|:;\-–]+\s*$/, '')) || nameCell || '';
+    const written = clean(before.replace(/[,|:;\-–]+\s*$/, ''));
+    // Text before the number is the name unless it is a product or a source ("Goat Insurance, 98612…" has no name).
+    const name = (written && !detectVertical(written) && !detectSource(written) ? written : '') || nameCell || '';
     out.push({
       line,
       name: hasLetters(name) ? name : '',
@@ -161,14 +205,19 @@ export function parseLeadRows(rows: string[][]): ImportCandidate[] {
 export function checkRows(candidates: ImportCandidate[], existingPhones: Set<string>): CheckedCandidate[] {
   const seen = new Set<string>();
   return candidates.map(c => {
+    const name = cleanName(c.name);
+    const reason = c.reason ? c.reason.replace(/\s+/g, ' ').trim() : null;
     let status: RowStatus = 'ready';
-    if (!c.name) status = 'missing-name';
-    else if (!c.phone) status = 'missing-phone';
+    let problem: string | undefined;
+    if (!c.phone) status = 'missing-phone';
     else if (c.phone.startsWith('?')) status = 'invalid-phone';
     else if (existingPhones.has(c.phone)) status = 'already-a-lead';
     else if (seen.has(c.phone)) status = 'duplicate-in-file';
-    if (c.phone && !c.phone.startsWith('?')) seen.add(c.phone);
-    return { ...c, status };
+    else if (nameProblem(name)) { status = 'invalid-name'; problem = nameProblem(name)!; }
+    else if (reason && reason.length > REASON_MAX) { status = 'reason-too-long'; problem = `Reason has ${reason.length} characters (at most ${REASON_MAX}).`; }
+    // Only a row that would be saved claims its number, so a later row with the same number can still be imported.
+    if (status === 'ready') seen.add(c.phone!);
+    return { ...c, name, reason, status, nameMissing: !name, problem };
   });
 }
 
