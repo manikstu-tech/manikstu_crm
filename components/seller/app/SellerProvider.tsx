@@ -12,6 +12,7 @@ import { LOW_STOCK_LEVEL } from '../../../data/stockLevels';
 import type { SessionUser } from '../../../lib/session';
 import { nowStamp, rupees } from '../../../lib/format';
 import { isLiveOrder } from '../../telecaller/orderTracking';
+import { CourierCode, CourierForm, courierCodeFor, courierPayload, courierProblems } from '../../../lib/couriers';
 import {
   ManualStageAction, ORDER_STATUS_LABEL, SellerOrder, ShipmentDetails, nextManualStep, sellerOrders, sellerTrackingFor, stockLevels,
 } from '../sellerData';
@@ -95,7 +96,8 @@ export function restockProblem(units: string): string | null {
   return null;
 }
 
-interface ConfirmCard { orderId: number; courier: string; trackingNo: string; busy: boolean; error: string | null }
+/** The confirm / courier form: the courier picked from the list, the name typed for "Others", the tracking number typed. */
+interface ConfirmCard extends CourierForm { orderId: number; busy: boolean; error: string | null; /** Show each field's problem (after a save attempt). */ checked: boolean }
 interface RestockState { product: CatalogProduct; suggested: number; units: string; note: string; error: string | null }
 interface ProductFormState {
   editingId: number | null;
@@ -242,8 +244,19 @@ function useSellerState({ user, seller, initialOrders, initialProducts, mixedOrd
   const stock = useMemo(() => stockLevels(myProducts.filter(p => p.is_active), myOrders), [myProducts, myOrders]);
   const stockAlerts = stock.filter(s => s.status !== 'in').length;
 
-  /* ---------- Courier details (typed in when confirming) ---------- */
-  const [shipmentDetails, setShipmentDetails] = useState<Record<number, ShipmentDetails>>({});
+  /* ---------- Courier details (chosen when confirming, saved on the order) ---------- */
+  // This device keeps only what the backend has no status for (packed on sample orders, out for delivery); the courier
+  // and tracking number come from the order itself, so every device and the telecalling team see the same.
+  const [localShipment, setShipmentDetails] = useState<Record<number, ShipmentDetails>>({});
+  const shipmentDetails = useMemo(() => {
+    const merged: Record<number, ShipmentDetails> = { ...localShipment };
+    for (const o of orders) {
+      if (!o.courier_name) continue;
+      const local = merged[o.id];
+      merged[o.id] = { ...(local ?? { confirmedAt: o.created_at }), courier: o.courier_name, trackingNo: o.tracking_number ?? '' };
+    }
+    return merged;
+  }, [localShipment, orders]);
 
   /* ---------- Alerts ---------- */
   const storeKey = `mk-seller-alerts:${seller.id}`;
@@ -320,7 +333,7 @@ function useSellerState({ user, seller, initialOrders, initialProducts, mixedOrd
    * if the server disagrees: the backend decides which moves are legal. Resolves true once saved.
    * `navigate` (default: on desktop) opens Tracking after shipping or delivering, as the desktop dashboard always did.
    */
-  const advanceOrder = useCallback(async (orderId: number, to: OrderStatus, opts: { navigate?: boolean; onError?: (message: string) => void } = {}): Promise<boolean> => {
+  const advanceOrder = useCallback(async (orderId: number, to: OrderStatus, opts: { navigate?: boolean; onError?: (message: string) => void; extra?: Record<string, unknown> } = {}): Promise<boolean> => {
     if (offlineBlock()) { opts.onError?.("You're offline. Connect to the internet and try again."); return false; }
     if (busyOrderIds.includes(orderId)) return false;
     const at = nowStamp();
@@ -348,9 +361,14 @@ function useSellerState({ user, seller, initialOrders, initialProducts, mixedOrd
       const res = await fetch(`/api/seller/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: to }),
+        body: JSON.stringify({ status: to, ...(opts.extra ?? {}) }),
       });
       const body = await res.json().catch(() => ({}));
+      if (res.ok && body.data && 'courier_code' in body.data) {
+        setOrders(prev => prev.map(o => (o.id === orderId
+          ? { ...o, courier_code: body.data.courier_code, courier_name: body.data.courier_name, tracking_number: body.data.tracking_number, bus_name: body.data.bus_name ?? null, bus_number: body.data.bus_number ?? null }
+          : o)));
+      }
       if (res.ok && to === 'shipped' && order) {
         // Shipping takes the units off the shelf. Use the backend's new figures; the offline demo works them out here.
         const updates: { id: number; stock_quantity: number }[] | null = Array.isArray(body.data?.stock) ? body.data.stock : null;
@@ -413,31 +431,74 @@ function useSellerState({ user, seller, initialOrders, initialProducts, mixedOrd
   const confirmOrder = confirmCard ? orders.find(o => o.id === confirmCard.orderId) ?? null : null;
 
   const openConfirmCard = useCallback((orderId: number) => {
-    const existing = shipmentDetails[orderId];
-    setConfirmCard({ orderId, courier: existing?.courier ?? '', trackingNo: existing?.trackingNo ?? '', busy: false, error: null });
-  }, [shipmentDetails]);
-  const closeConfirmCard = useCallback(() => setConfirmCard(null), []);
-  const setConfirmField = useCallback((field: 'courier' | 'trackingNo', value: string) => setConfirmCard(c => (c ? { ...c, [field]: value, error: null } : c)), []);
+    // Opens with what is saved: the order's own courier, or (older data) a name typed before the list existed.
+    const order = orders.find(o => o.id === orderId);
+    const savedName = order?.courier_name ?? shipmentDetails[orderId]?.courier ?? '';
+    const code: CourierCode | '' = (order?.courier_code as CourierCode | null | undefined) ?? (savedName ? courierCodeFor(savedName) : '');
+    setConfirmCard({
+      orderId, courierCode: code, otherName: code === 'other' ? savedName : '',
+      trackingNo: order?.tracking_number ?? shipmentDetails[orderId]?.trackingNo ?? '',
+      busName: code === 'bus' ? order?.bus_name ?? '' : '', busNumber: code === 'bus' ? order?.bus_number ?? '' : '',
+      busy: false, error: null, checked: false,
+    });
+  }, [orders, shipmentDetails]);
+  const closeConfirmCard = useCallback(() => setConfirmCard(c => (c?.busy ? c : null)), []);
+  /** Changing the courier away from "Others" clears the typed name, so a stale name is never saved. */
+  const setConfirmField = useCallback((field: 'courierCode' | 'otherName' | 'trackingNo' | 'busName' | 'busNumber', value: string) => setConfirmCard(c => {
+    if (!c || c.busy) return c;
+    if (field === 'courierCode') {
+      // Leaving Bus clears its name and number, so choosing Bus again starts empty.
+      const bus = value === 'bus' && c.courierCode === 'bus';
+      return { ...c, courierCode: value as CourierCode | '', otherName: value === 'other' ? c.otherName : '', busName: bus ? c.busName : '', busNumber: bus ? c.busNumber : '', error: null };
+    }
+    return { ...c, [field]: value, error: null };
+  }), []);
 
   const saveConfirmCard = useCallback(async () => {
-    if (!confirmCard || confirmCard.busy) return;
-    const courier = confirmCard.courier.trim();
-    const trackingNo = confirmCard.trackingNo.trim();
-    if (!courier || !trackingNo) { setConfirmCard(c => (c ? { ...c, error: 'Enter the courier name and its tracking number.' } : c)); return; }
+    if (!confirmCard || confirmCard.busy) return;     // a second click while saving does nothing
+    const problems = courierProblems(confirmCard);
+    if (problems.courier || problems.otherName || problems.trackingNo) {
+      setConfirmCard(c => (c ? { ...c, checked: true, error: 'Fix the highlighted fields to continue.' } : c));
+      return;
+    }
     const order = orders.find(o => o.id === confirmCard.orderId);
     const id = confirmCard.orderId;
-    setShipmentDetails(prev => ({ ...prev, [id]: { ...prev[id], courier, trackingNo, confirmedAt: prev[id]?.confirmedAt ?? nowStamp() } }));
+    const payload = courierPayload(confirmCard);
+    const keepLocally = () => setShipmentDetails(prev => ({
+      ...prev, [id]: { ...prev[id], courier: payload.courier_name, trackingNo: payload.tracking_number ?? '', confirmedAt: prev[id]?.confirmedAt ?? nowStamp() },
+    }));
+    setConfirmCard(c => (c ? { ...c, busy: true, error: null } : c));
+
     if (order?.status === 'pending') {
-      setConfirmCard(c => (c ? { ...c, busy: true, error: null } : c));
+      // The courier is saved with the confirmation, in the same request: both or neither.
       let reason = 'The order was not confirmed. Please try again.';
-      const ok = await advanceOrder(id, 'confirmed', { onError: msg => { reason = `Not confirmed: ${msg}`; } });
-      if (ok) setConfirmCard(null);
+      const ok = await advanceOrder(id, 'confirmed', { extra: payload, onError: msg => { reason = `Not confirmed: ${msg}`; } });
+      if (ok) { keepLocally(); setConfirmCard(null); }
       else setConfirmCard(c => (c ? { ...c, busy: false, error: reason } : c));
-    } else {
-      showToast(`${order?.order_number} tracking details updated`);
-      setConfirmCard(null);
+      return;
     }
-  }, [confirmCard, orders, advanceOrder, showToast]);
+
+    // Already confirmed: add or correct the courier details only.
+    if (offlineBlock()) { setConfirmCard(c => (c ? { ...c, busy: false, error: "You're offline. Connect to the internet and try again." } : c)); return; }
+    try {
+      const res = await fetch(`/api/seller/orders/${id}/shipment`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (!checkSession(res)) return;
+        setConfirmCard(c => (c ? { ...c, busy: false, error: body.error ?? 'Could not save the courier details.' } : c));
+        return;
+      }
+      const saved = body.data ?? payload;
+      setOrders(prev => prev.map(o => (o.id === id
+        ? { ...o, courier_code: saved.courier_code, courier_name: saved.courier_name, tracking_number: saved.tracking_number, bus_name: saved.bus_name ?? null, bus_number: saved.bus_number ?? null }
+        : o)));
+      keepLocally();
+      showToast(`${order?.order_number} courier details saved`);
+      setConfirmCard(null);
+    } catch {
+      setConfirmCard(c => (c ? { ...c, busy: false, error: 'Could not reach the server. Check your connection and try again.' } : c));
+    }
+  }, [confirmCard, orders, advanceOrder, showToast, offlineBlock, checkSession]);
 
   /* ---------- Restock ---------- */
   const [movements, setMovements] = useState<StockMovement[]>([]);

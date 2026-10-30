@@ -139,6 +139,13 @@ export interface SalesOrder {
   status: OrderStatus;
   payment_status: PaymentStatus;
   payment_method: PaymentMethod;
+  /** The courier the seller chose when confirming (see lib/couriers.ts), its name, and the tracking number they typed. */
+  courier_code?: string | null;
+  courier_name?: string | null;
+  tracking_number?: string | null;
+  /** Bus only (both optional): the bus operator / service and the bus number. */
+  bus_name?: string | null;
+  bus_number?: string | null;
   notes: string | null;
   created_at: string;
   status_history: { status: OrderStatus; at: string; by?: string | null; note?: string | null }[];

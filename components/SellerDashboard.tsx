@@ -23,6 +23,7 @@ import { HelpScreen, MoreScreen, NotificationsScreen, ProfileScreen, SettingsScr
 import { useNav } from './seller/app/nav';
 import { DESKTOP_HREF, DESKTOP_PAGE } from './seller/app/routes';
 import { useSeller } from './seller/app/SellerProvider';
+import { BUS_NAME_MAX, BUS_NUMBER_MAX, COURIERS, courierProblems, needsTracking } from '../lib/couriers';
 
 export default function SellerDashboard() {
   const s = useSeller();
@@ -182,23 +183,69 @@ export default function SellerDashboard() {
         closeOnBackdrop={false}
       >
         {confirmOrder && c && (
-          <form onSubmit={e => { e.preventDefault(); void s.saveConfirmCard(); }}>
+          <form noValidate onSubmit={e => { e.preventDefault(); void s.saveConfirmCard(); }}>
             <p className="loc" style={{ marginBottom: 14 }}>
-              {confirmOrder.status === 'pending'
-                ? 'Add the courier and its tracking number to confirm this order.'
-                : 'The courier and tracking number saved for this order.'}
+              {!needsTracking(c.courierCode)
+                ? `Sent by bus: no tracking number is needed. Add the bus name and number if you have them.`
+                : confirmOrder.status === 'pending'
+                  ? 'Add the courier and its tracking number to confirm this order.'
+                  : 'The courier and tracking number saved for this order.'}
             </p>
-            <div className="form-group">
-              <label htmlFor="sc-courier">Courier name</label>
-              <input id="sc-courier" type="text" required placeholder="e.g. India Post, Delhivery, DTDC" value={c.courier} onChange={e => s.setConfirmField('courier', e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label htmlFor="sc-tracking-no">Tracking No.</label>
-              <input id="sc-tracking-no" type="text" required placeholder="Courier tracking / AWB number" value={c.trackingNo} onChange={e => s.setConfirmField('trackingNo', e.target.value)} />
-            </div>
+            {(() => {
+              // Each field's problem shows once the seller has tried to save (see courierProblems in lib/couriers).
+              const p = c.checked ? courierProblems(c) : { courier: null, otherName: null, trackingNo: null };
+              const err = (msg: string | null, id: string) => msg && <div id={id} className="field-error" role="alert">{msg}</div>;
+              return (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="sc-courier">Courier name</label>
+                    <select id="sc-courier" value={c.courierCode} onChange={e => s.setConfirmField('courierCode', e.target.value)} disabled={c.busy}
+                      aria-invalid={!!p.courier} aria-describedby={p.courier ? 'sc-courier-err' : undefined}>
+                      <option value="" disabled>Select a courier</option>
+                      {COURIERS.map(x => <option key={x.code} value={x.code}>{x.label}</option>)}
+                    </select>
+                    {err(p.courier, 'sc-courier-err')}
+                  </div>
+                  {c.courierCode === 'other' && (
+                    <div className="form-group">
+                      <label htmlFor="sc-other-courier">Other Courier Name</label>
+                      <input id="sc-other-courier" type="text" required maxLength={80} placeholder="Enter courier name" value={c.otherName} disabled={c.busy} autoFocus
+                        onChange={e => s.setConfirmField('otherName', e.target.value)} aria-invalid={!!p.otherName} aria-describedby={p.otherName ? 'sc-other-err' : undefined} />
+                      {err(p.otherName, 'sc-other-err')}
+                    </div>
+                  )}
+                  {c.courierCode === 'bus' && (
+                    // Bus only, both optional: highlighted so the seller notices them, never an error when empty.
+                    <div className="bus-fields" role="group" aria-label="Bus details (optional)">
+                      <div className="form-group">
+                        <label htmlFor="sc-bus-name">Bus Name <span className="optional-tag">Optional</span></label>
+                        <input id="sc-bus-name" type="text" maxLength={BUS_NAME_MAX} autoComplete="off" placeholder="Enter bus operator or bus service name"
+                          value={c.busName} disabled={c.busy} onChange={e => s.setConfirmField('busName', e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="sc-bus-number">Bus Number <span className="optional-tag">Optional</span></label>
+                        <input id="sc-bus-number" type="text" maxLength={BUS_NUMBER_MAX} autoComplete="off" spellCheck={false} placeholder="Enter bus number"
+                          value={c.busNumber} disabled={c.busy} onChange={e => s.setConfirmField('busNumber', e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+                  {/* No tracking number for Bus: the field is not shown at all. */}
+                  {needsTracking(c.courierCode) && (
+                    <div className="form-group">
+                      <label htmlFor="sc-tracking-no">Tracking / AWB Number</label>
+                      <input id="sc-tracking-no" type="text" required maxLength={40} autoComplete="off" spellCheck={false}
+                        placeholder="Enter tracking or AWB number"
+                        value={c.trackingNo} disabled={c.busy} onChange={e => s.setConfirmField('trackingNo', e.target.value)}
+                        aria-invalid={!!p.trackingNo} aria-describedby={p.trackingNo ? 'sc-tracking-err' : undefined} />
+                      {err(p.trackingNo, 'sc-tracking-err')}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {c.error && <p className="loc" role="alert" style={{ color: 'var(--rust)', margin: '-4px 0 10px' }}>{c.error}</p>}
             <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={s.closeConfirmCard}>Cancel</button>
+              <button type="button" className="btn-secondary" onClick={s.closeConfirmCard} disabled={c.busy}>Cancel</button>
               {(() => {
                 const step = s.nextManualStep(confirmOrder, shipmentDetails[confirmOrder.id]);
                 return step && (
