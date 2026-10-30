@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, User } from 'lucide-react';
 
 export interface DemoAccount {
   label: string;
@@ -49,7 +49,9 @@ export default function LoginForm({ demoAccounts = [] }: { demoAccounts?: DemoAc
       <form onSubmit={handleSubmit} className="login-form">
         <div className="form-group">
           <label htmlFor="login">Email or Staff ID</label>
-          <input
+          <div className="login-input">
+            <User size={18} className="login-input-icon" aria-hidden="true" />
+            <input
             id="login"
             type="text"
             autoComplete="username"
@@ -59,13 +61,16 @@ export default function LoginForm({ demoAccounts = [] }: { demoAccounts?: DemoAc
             placeholder="name@manikstu.in or MK-TC-120"
             value={login}
             onChange={(e) => setLogin(e.target.value)}
-          />
+            />
+          </div>
         </div>
         <div className="form-group">
           <label htmlFor="password">Password</label>
-          <div className="password-field">
+          <div className="password-field login-input">
+            <Lock size={18} className="login-input-icon" aria-hidden="true" />
             <input
               id="password"
+              placeholder="Enter your password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               required
@@ -85,7 +90,7 @@ export default function LoginForm({ demoAccounts = [] }: { demoAccounts?: DemoAc
         </div>
         {error && <div className="login-error" role="alert">{error}</div>}
         <button type="submit" className="btn-primary login-submit" disabled={submitting}>
-          {submitting ? 'Signing in…' : 'Sign in'}
+          {submitting ? 'Signing in…' : <>Sign in <ArrowRight size={18} aria-hidden="true" /></>}
         </button>
       </form>
 

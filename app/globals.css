@@ -1713,33 +1713,84 @@ code { font-size: 11.5px; background: var(--line); border-radius: 4px; padding: 
   font-size: 13.5px;
 }
 
-/* Login */
-.login-page { min-height: 100vh; display: flex; flex-direction: column; }
+/* Login: ivory page with the leaf line-art at the top, the goats illustration above the card */
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #FDFBF6;
+  overflow-x: hidden;
+}
+/* Leaf line-art in the top corner, faded out so the picture has no visible edge. */
+.login-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(100%, 560px);
+  aspect-ratio: 852 / 560;
+  background: url('/login/leaves-top.webp') no-repeat top left / 100% auto;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent), linear-gradient(to right, #000 65%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, #000 55%, transparent), linear-gradient(to right, #000 65%, transparent);
+  mask-composite: intersect;
+  pointer-events: none;
+}
+.login-main, .login-footer { position: relative; z-index: 1; }
 .login-main {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 40px 16px;
+  padding: 36px 16px 24px;
+}
+.login-hero { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.login-logo { width: 150px; height: auto; display: block; margin-bottom: 14px; }
+.login-brand-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 34px; line-height: 1.15; color: var(--forest); }
+.login-brand-motto { font-family: 'Playfair Display', serif; font-style: italic; font-size: 15px; color: var(--ink-soft); margin-top: 6px; }
+.login-divider { display: block; width: 56px; height: 2px; border-radius: 2px; background: var(--gold); margin-top: 16px; }
+.login-goats {
+  display: block; width: calc(100% + 32px); max-width: 520px; height: auto; margin: 0 -16px -64px;
+  pointer-events: none; user-select: none;
+  /* Fade the picture's edges into the page so it has no visible box. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%), linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22%), linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%);
+  mask-composite: intersect;
 }
 .login-card {
+  position: relative;
   width: 100%;
-  max-width: 400px;
-  background: var(--card-bg);
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 32px 30px;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(38, 53, 46, 0.08);
+  padding: 28px 26px 26px;
 }
-.login-brand { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; margin-bottom: 24px; }
-.login-logo { width: 96px; height: auto; display: block; }
-.login-brand-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; }
-.login-brand-motto { font-family: 'Playfair Display', serif; font-style: italic; font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
-.login-card h1 { font-size: 26px; margin-bottom: 6px; text-align: center; }
-.login-sub { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 22px; text-align: center; }
+.login-card h1 { font-family: 'Playfair Display', serif; font-size: 32px; color: var(--forest); margin-bottom: 8px; text-align: center; }
+.login-sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 22px; text-align: center; line-height: 1.5; }
 .login-form .form-group { margin-bottom: 16px; }
-.login-submit { width: 100%; margin-top: 4px; }
+.login-form .form-group label { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 7px; }
+.login-input { position: relative; }
+.login-input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--leaf); pointer-events: none; }
+.login-input input { padding: 13px 14px 13px 44px; border-radius: 10px; font-size: 15px; background: #FAF8F2; }
+.login-input.password-field input { padding-right: 48px; }
+.login-submit {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px 18px;
+  font-size: 16px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2A6B4B, var(--forest));
+  box-shadow: 0 6px 16px rgba(23, 75, 50, 0.25);
+}
 .login-submit:disabled { opacity: 0.7; cursor: wait; transform: none; }
+.login-footer { text-align: center; font-size: 13px; color: var(--ink-soft); padding: 16px 16px 24px; }
+@media (min-width: 900px) {
+  .login-page::before { width: 480px; }
+}
 .login-error {
   background: #F3E3DC;
   color: var(--rust);
