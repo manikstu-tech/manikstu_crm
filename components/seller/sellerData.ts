@@ -94,8 +94,9 @@ export function sellerTrackingFor(o: SalesOrder, details: ShipmentDetails | unde
   const base = trackingFor(o, now);
   if (o.status === 'cancelled' || o.status === 'rejected') return base;
   // Offline sample orders keep their simulated courier; CRM orders show only what the seller entered.
-  const courier = details?.courier.trim() || (live ? null : base.courier);
-  const awb = details?.trackingNo.trim() || (live ? null : base.awb);
+  // The courier saved on the order (chosen when confirming) wins; then what this device recorded; never a made-up one.
+  const courier = o.courier_name?.trim() || details?.courier.trim() || (live ? null : base.courier);
+  const awb = o.tracking_number?.trim() || details?.trackingNo.trim() || (live ? null : base.awb);
 
   const confirmedAt = historyAt(o, 'confirmed');
   const packedAt = historyAt(o, 'ready_for_dispatch') ?? details?.packedAt ?? null;

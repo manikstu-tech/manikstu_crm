@@ -204,7 +204,7 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
                   {shipmentDetails[o.order.id] ? (
                     <>
                       {shipmentDetails[o.order.id].courier || '—'}
-                      <div className="loc">Tracking {shipmentDetails[o.order.id].trackingNo}</div>
+                      {shipmentDetails[o.order.id].trackingNo && <div className="loc">Tracking {shipmentDetails[o.order.id].trackingNo}</div>}
                     </>
                   ) : (
                     <span className="loc">Not added yet</span>

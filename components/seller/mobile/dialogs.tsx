@@ -6,12 +6,12 @@
 import React, { useState } from 'react';
 import { Minus, PackagePlus, Plus, Truck } from 'lucide-react';
 import { rupees } from '../../../lib/format';
+import { BUS_NAME_MAX, BUS_NUMBER_MAX, COURIERS, courierProblems, needsTracking } from '../../../lib/couriers';
 import ProductForm from '../ProductForm';
 import { restockProblem, useSeller } from '../app/SellerProvider';
 import type { ManualStageAction } from '../sellerData';
 import { Btn, Chip, ConfirmSheet, KeyVal, Notice, ProductThumb, Sheet } from './ui';
 
-const COURIERS = ['India Post', 'Delhivery', 'DTDC', 'Ekart', 'Blue Dart', 'Own delivery'];
 
 /** Button text for each next step, short enough for half-width phone buttons. */
 export const STEP_SHORT: Record<ManualStageAction, string> = {
@@ -48,24 +48,59 @@ export function ConfirmOrderSheet() {
             {mine && <span>{mine.items.map(i => `${i.product_name} × ${i.quantity}`).join(', ')} · {rupees(mine.gross)}</span>}
           </div>
           <p className="sx-hint">
-            {pending ? 'Add the courier and its tracking number to confirm this order.' : 'The courier and tracking number for this order.'}
+            {!needsTracking(c.courierCode)
+              ? 'Sent by bus: no tracking number is needed. Add the bus name and number if you have them.'
+              : pending ? 'Add the courier and its tracking number to confirm this order.' : 'The courier and tracking number for this order.'}
           </p>
-          <div className="sx-field">
-            <label htmlFor="sx-courier">Courier name</label>
-            <input id="sx-courier" type="text" required autoComplete="off" placeholder="e.g. India Post, Delhivery, DTDC" value={c.courier}
-              aria-invalid={!!c.error && !c.courier.trim()} onChange={e => setConfirmField('courier', e.target.value)} />
-            <div className="sx-quick" role="group" aria-label="Pick a courier">
-              {COURIERS.map(name => (
-                <button key={name} type="button" className="sx-quick-chip" aria-pressed={c.courier.trim() === name} onClick={() => setConfirmField('courier', name)}>{name}</button>
-              ))}
-            </div>
-          </div>
-          <div className="sx-field">
-            <label htmlFor="sx-awb">Tracking / AWB number</label>
-            <input id="sx-awb" type="text" required autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="Courier tracking number" value={c.trackingNo}
-              aria-invalid={!!c.error && !c.trackingNo.trim()} onChange={e => setConfirmField('trackingNo', e.target.value)} />
-          </div>
-          <p className="sx-hint">Courier details stay on this device for now: the CRM doesn&apos;t store them yet.</p>
+          {(() => {
+            const p = c.checked ? courierProblems(c) : { courier: null, otherName: null, trackingNo: null };
+            return (
+              <>
+                <div className="sx-field">
+                  <label htmlFor="sx-courier">Courier name</label>
+                  <select id="sx-courier" value={c.courierCode} disabled={c.busy} aria-invalid={!!p.courier}
+                    onChange={e => setConfirmField('courierCode', e.target.value)}>
+                    <option value="" disabled>Select a courier</option>
+                    {COURIERS.map(x => <option key={x.code} value={x.code}>{x.label}</option>)}
+                  </select>
+                  {p.courier && <p className="sx-form-error" role="alert">{p.courier}</p>}
+                </div>
+                {c.courierCode === 'other' && (
+                  <div className="sx-field">
+                    <label htmlFor="sx-other-courier">Other Courier Name</label>
+                    <input id="sx-other-courier" type="text" required autoComplete="off" maxLength={80} placeholder="Enter courier name" value={c.otherName}
+                      disabled={c.busy} aria-invalid={!!p.otherName} onChange={e => setConfirmField('otherName', e.target.value)} />
+                    {p.otherName && <p className="sx-form-error" role="alert">{p.otherName}</p>}
+                  </div>
+                )}
+                {c.courierCode === 'bus' && (
+                  // Bus only, both optional: highlighted so the seller notices them, never an error when empty.
+                  <div className="bus-fields" role="group" aria-label="Bus details (optional)">
+                    <div className="sx-field">
+                      <label htmlFor="sx-bus-name">Bus Name <span className="optional-tag">Optional</span></label>
+                      <input id="sx-bus-name" type="text" autoComplete="off" maxLength={BUS_NAME_MAX} placeholder="Enter bus operator or bus service name"
+                        value={c.busName} disabled={c.busy} onChange={e => setConfirmField('busName', e.target.value)} />
+                    </div>
+                    <div className="sx-field">
+                      <label htmlFor="sx-bus-number">Bus Number <span className="optional-tag">Optional</span></label>
+                      <input id="sx-bus-number" type="text" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={BUS_NUMBER_MAX}
+                        placeholder="Enter bus number" value={c.busNumber} disabled={c.busy} onChange={e => setConfirmField('busNumber', e.target.value)} />
+                    </div>
+                  </div>
+                )}
+                {/* No tracking number for Bus: the field is not shown at all. */}
+                {needsTracking(c.courierCode) && (
+                  <div className="sx-field">
+                    <label htmlFor="sx-awb">Tracking / AWB Number</label>
+                    <input id="sx-awb" type="text" required autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={40}
+                      placeholder="Enter tracking or AWB number" value={c.trackingNo}
+                      disabled={c.busy} aria-invalid={!!p.trackingNo} onChange={e => setConfirmField('trackingNo', e.target.value)} />
+                    {p.trackingNo && <p className="sx-form-error" role="alert">{p.trackingNo}</p>}
+                  </div>
+                )}
+              </>
+            );
+          })()}
           {c.error && <p className="sx-form-error" role="alert">{c.error}</p>}
         </form>
       )}

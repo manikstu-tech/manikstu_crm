@@ -164,7 +164,10 @@ function recordedTracking(o: SalesOrder, now: string, at: { confirmedAt: string 
   ];
   if (confirmedAt) events.push({ stage: 'confirmed', at: confirmedAt, text: 'Order confirmed by the seller', place: 'Seller' });
   if (packedAt) events.push({ stage: 'packed', at: packedAt, text: `Packed: ${o.items.map(i => `${i.product_name} × ${i.quantity}`).join(', ')}`, place: 'Seller' });
-  if (shippedAt) events.push({ stage: 'shipped', at: shippedAt, text: 'Handed to the courier', place: 'Seller' });
+  if (shippedAt) {
+    const by = o.courier_name?.trim();
+    events.push({ stage: 'shipped', at: shippedAt, text: `Handed to ${by || 'the courier'}${o.tracking_number ? ` · tracking ${o.tracking_number}` : ''}`, place: 'Seller' });
+  }
   if (deliveredAt) {
     events.push({
       stage: 'delivered',
@@ -178,7 +181,8 @@ function recordedTracking(o: SalesOrder, now: string, at: { confirmedAt: string 
   const stage: TrackStage = deliveredAt ? 'delivered' : shippedAt ? 'shipped' : packedAt ? 'packed' : confirmedAt ? 'confirmed' : 'placed';
   const expected_at = stage === 'delivered' ? null : `${addHours(shippedAt ?? o.created_at, DELIVERY_ESTIMATE_DAYS * 24).slice(0, 10)}T18:00`;
   return {
-    stage, courier: null, awb: null, expected_at, expectedIsEstimate: true,
+    // The courier and tracking number the seller saved when confirming; null until they do.
+    stage, courier: o.courier_name?.trim() || null, awb: o.tracking_number?.trim() || null, expected_at, expectedIsEstimate: true,
     delayed: stage === 'shipped' && !!expected_at && expected_at < now,
     events,
   };

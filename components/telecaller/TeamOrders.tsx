@@ -342,7 +342,7 @@ export default function TeamOrders({ orders, complaints, searchQuery, onToast }:
             <button className="kanban-btn" disabled={safePage >= pages - 1} onClick={() => setPage(safePage + 1)}>Next</button>
           </div>
         )}
-        <div className="panel-note">Tracking shows the status changes the seller has recorded. Courier and AWB are not recorded yet, and delivery dates are estimates.</div>
+        <div className="panel-note">Tracking shows the status changes the seller has recorded and the courier and tracking number they entered when confirming. Delivery dates are estimates.</div>
       </div>
 
       {opened && (
