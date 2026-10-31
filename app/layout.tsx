@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import PushRegistrar from '../components/PushRegistrar';
 
 export const metadata: Metadata = {
   title: 'Manikstu Samarth',
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {children}
+        <PushRegistrar />
       </body>
     </html>
   );
