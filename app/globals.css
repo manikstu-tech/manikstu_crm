@@ -2871,14 +2871,19 @@ button.score-btn .num svg { vertical-align: -2px; margin-right: 4px; opacity: 0.
   .nav-logout .icon-btn { width: 44px; height: 44px; }
 }
 
-/* Phones: menu button top-left and logout top-right of the green card, logo centred between them */
+/* Phones: menu button top-right of the green card, logo centred; log out is the drawer's last item */
 @media (max-width: 768px) {
   .card-layout .sidebar { position: relative; }
   .nav-toggle-row { display: block; padding: 0 56px; }
-  .nav-toggle-row .nav-toggle { position: absolute; top: 12px; left: 12px; }
-  .nav-toggle-row .nav-logout { position: absolute; top: 12px; right: 12px; margin: 0; }
+  .nav-toggle-row .nav-toggle { position: absolute; top: 12px; right: 12px; left: auto; }
   .nav-toggle-current { display: block; text-align: center; }
+  /* The drawer slides in from the side the button is on */
+  .card-layout .sidebar-nav { left: auto; right: 0; transform: translateX(100%); border-right: 0; border-left: 1px solid var(--line); }
+  .nav-logout-item { display: block; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .card-layout .nav-logout-item .nav-item, .card-layout .nav-logout-item .nav-item .nav-icon { color: var(--rust); }
 }
+/* Desktop keeps log out in the top bar */
+@media (min-width: 769px) { .nav-logout-item { display: none; } }
 
 /* Phones: the green card shows only the logo and the two corner buttons */
 @media (max-width: 768px) {

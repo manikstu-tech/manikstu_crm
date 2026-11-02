@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import LogoutButton from './LogoutButton';
 
 export interface NavItem {
   key: string;
@@ -28,7 +27,8 @@ interface SidebarProps {
 
 /**
  * Cream sidebar shared by every dashboard: logo, then grouped pages with icons and counts.
- * On phones the page list is hidden behind a ☰ button and opens as a vertical drawer.
+ * On phones the page list is hidden behind a ☰ button (top right) and opens as a drawer from the right,
+ * with Log out as its last item.
  */
 export default function Sidebar({ groups, activePage, onSelectPage, menuOpen, onMenuOpenChange }: SidebarProps) {
   const [openState, setOpenState] = useState(false);
@@ -64,8 +64,6 @@ export default function Sidebar({ groups, activePage, onSelectPage, menuOpen, on
           <Menu size={20} />
         </button>
         <span className="nav-toggle-current">{active?.label ?? 'Menu'}</span>
-        {/* Phones: log out lives in the green card (the top bar's copy is hidden there). */}
-        <div className="nav-logout"><LogoutButton /></div>
       </div>
 
       <div className="nav-backdrop" onClick={() => setOpen(false)} aria-hidden />
@@ -99,6 +97,13 @@ export default function Sidebar({ groups, activePage, onSelectPage, menuOpen, on
             })}
           </div>
         ))}
+        {/* Phones: log out is the menu's last item (the top bar's copy is hidden there). Plain form post, as in LogoutButton. */}
+        <form action="/api/auth/logout" method="post" className="nav-logout-item">
+          <button type="submit" className="nav-item">
+            <LogOut className="nav-icon" size={17} />
+            Log out
+          </button>
+        </form>
       </nav>
     </aside>
   );
