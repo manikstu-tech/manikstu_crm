@@ -4,6 +4,7 @@ import { TODAY } from '../../data/today';
 import type { Seller } from '../../data/sellers';
 import { RESERVING_STATUSES, StockStatus, stockStatusOf } from '../../data/stockLevels';
 import { daysBefore, nowStamp } from '../../lib/format';
+import { orderSourceLabel } from '../../lib/orderDisplay';
 import { addHours } from '../../lib/time';
 import { DELIVERY_ESTIMATE_DAYS, TrackEvent, TrackStage, Tracking, isLiveOrder, realNowStamp, trackingFor } from '../telecaller/orderTracking';
 
@@ -107,7 +108,7 @@ export function sellerTrackingFor(o: SalesOrder, details: ShipmentDetails | unde
   const stage: TrackStage = deliveredAt ? 'delivered' : outAt ? 'out_for_delivery' : shippedAt ? 'shipped' : packedAt ? 'packed' : confirmedAt ? 'confirmed' : 'placed';
 
   const events: TrackEvent[] = [
-    { stage: 'placed', at: o.created_at, text: o.source === 'website' ? 'Order placed on the website' : 'Order taken on a call', place: o.source === 'website' ? 'Website' : 'Telecalling team' },
+    { stage: 'placed', at: o.created_at, text: o.source === 'website' ? 'Order placed on the website' : 'Order taken on a call', place: orderSourceLabel(o) },
   ];
   if (confirmedAt) events.push({ stage: 'confirmed', at: confirmedAt, text: 'Order confirmed by the seller', place: 'Seller' });
   if (packedAt) events.push({ stage: 'packed', at: packedAt, text: `Packed: ${o.items.map(i => `${i.product_name} × ${i.quantity}`).join(', ')}`, place: 'Seller' });

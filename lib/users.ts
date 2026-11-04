@@ -53,7 +53,7 @@ const USERS: UserRecord[] = [
     email: 'sanjay@manikstu.in',
     name: 'Sanjay Rath',
     initials: 'SR',
-    role: 'seller', // Odisha Herbal Vet Labs, see data/sellers.ts
+    role: 'seller', // Manikstu Agro Pvt Ltd, see data/sellers.ts
     staffId: 'MK-SL-301',
     // seller123
     passwordHash: '871068dc821b03201e757e5be590d54a:f7d18c6ca8980dd606dfaa54f29a6375637e2b35012b6b9baf5f41fa7b18855a',

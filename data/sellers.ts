@@ -25,7 +25,7 @@ export const SELLERS: Seller[] = [
     userId: 'u-sl-301',
     staffId: 'MK-SL-301',
     dbUserId: '3',
-    business: 'Odisha Herbal Vet Labs',
+    business: 'Manikstu Agro Pvt Ltd',
     owner: 'Sanjay Rath',
     city: 'Bhubaneswar',
     gstin: '21AAKFO4412M1Z6',

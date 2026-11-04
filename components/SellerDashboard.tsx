@@ -5,7 +5,6 @@
 // URL under /seller, so links, refresh and the back button work here too.
 
 import React from 'react';
-import { BarChart3, Boxes, HelpCircle, LayoutDashboard, MapPin, Settings, ShoppingCart, Truck, UserRound, Wallet } from 'lucide-react';
 import Sidebar, { NavGroup } from './Sidebar';
 import Topbar from './Topbar';
 import Modal from './Modal';
@@ -21,6 +20,7 @@ import ProductForm from './seller/ProductForm';
 import OrderDetailScreen from './seller/mobile/OrderDetailScreen';
 import { HelpScreen, MoreScreen, NotificationsScreen, ProfileScreen, SettingsScreen } from './seller/mobile/AccountScreens';
 import { useNav } from './seller/app/nav';
+import { sellerMenuGroups } from './seller/app/menu';
 import { DESKTOP_HREF, DESKTOP_PAGE } from './seller/app/routes';
 import { useSeller } from './seller/app/SellerProvider';
 import { BUS_NAME_MAX, BUS_NUMBER_MAX, COURIERS, courierProblems, needsTracking } from '../lib/couriers';
@@ -51,33 +51,9 @@ export default function SellerDashboard() {
   };
   const currentMeta = pageMeta[activePage] ?? pageMeta.overview;
 
-  const navGroups: NavGroup[] = [
-    { label: 'Overview', items: [{ key: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
-    {
-      label: 'Sell',
-      items: [
-        { key: 'orders', label: 'Orders', icon: ShoppingCart, count: counts.toConfirm },
-        { key: 'stock', label: 'Stock', icon: Boxes, count: stockAlerts },
-        { key: 'tracking', label: 'Tracking', icon: Truck, count: counts.lateShipments + counts.toShip },
-        { key: 'regional', label: 'Regional report', icon: MapPin },
-      ],
-    },
-    {
-      label: 'Money',
-      items: [
-        { key: 'payouts', label: 'Payouts', icon: Wallet, count: counts.payoutsDue },
-        { key: 'reports', label: 'Reports', icon: BarChart3 },
-      ],
-    },
-    {
-      label: 'Account',
-      items: [
-        { key: 'profile', label: 'Seller profile', icon: UserRound },
-        { key: 'settings', label: 'Settings', icon: Settings },
-        { key: 'help', label: 'Help & support', icon: HelpCircle },
-      ],
-    },
-  ];
+  const navGroups: NavGroup[] = sellerMenuGroups({
+    toConfirm: counts.toConfirm, stockAlerts, shipments: counts.lateShipments + counts.toShip, payoutsDue: counts.payoutsDue,
+  }).map(g => ({ label: g.label, items: g.items.map(i => ({ key: DESKTOP_PAGE[i.screen], label: i.label, icon: i.icon, count: i.count })) }));
 
   const confirmOrder = s.confirmOrder;
   const c = s.confirmCard;

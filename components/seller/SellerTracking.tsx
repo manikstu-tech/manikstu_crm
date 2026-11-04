@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Eye } from 'lucide-react';
 import { TODAY } from '../../data/today';
 import { daysBefore, rupees, shortDate } from '../../lib/format';
+import { orderSourceLabel } from '../../lib/orderDisplay';
 import Modal from '../Modal';
 import { STAGE_CHIP, STAGE_FLOW, STAGE_LABEL, TrackStage, Tracking, stageIndex } from '../telecaller/orderTracking';
+import DeliveryDetails from './DeliveryDetails';
 import { ManualStageAction, SellerOrder, ShipmentDetails, nextManualStep, sellerTrackingFor } from './sellerData';
 import TrackingTimeline from './TrackingTimeline';
 
@@ -85,7 +87,7 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
   const q = searchQuery.trim().toLowerCase();
   const matchesSearch = (x: typeof tracked[number]) =>
     !q || [x.o.order.order_number, x.o.order.customer_name, x.o.order.city, x.t.awb ?? '', x.t.courier ?? '']
-      .some(v => v.toLowerCase().includes(q));
+      .some(v => (v ?? '').toLowerCase().includes(q));
   // A tab's number is what the table would show under it, search included, so "Ready to ship (9)" never sits above an empty table.
   const count = (k: Tab) => tracked.filter(x => inTrackTab(x.o, x.t, k) && matchesSearch(x)).length;
 
@@ -143,8 +145,8 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
                 const step = nextManualStep(o.order, shipmentDetails[o.order.id]);
                 return (
                   <tr key={o.order.id}>
-                    <td className="cust">{o.order.order_number}<div className="loc">{shortDate(o.order.created_at)}</div></td>
-                    <td>{o.order.customer_name}<div className="loc">{o.order.city}, {o.order.pincode}</div></td>
+                    <td className="cust">{o.order.order_number}<div className="loc">{orderSourceLabel(o.order)}</div><div className="loc">{shortDate(o.order.created_at)}</div></td>
+                    <td>{o.order.customer_name}<div className="loc">{[o.order.city, o.order.pincode].filter(Boolean).join(', ')}</div></td>
                     <td>
                       {o.items[0].product_name} × {o.items[0].quantity}
                       {o.items.length > 1 && <div className="loc">+ {o.items.length - 1} more</div>}
@@ -191,9 +193,8 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
             <>
               <section className="od-section">
                 <div className="od-label">Delivering to</div>
-                <div className="strong">{o.order.customer_name}</div>
-                <div className="loc">{o.order.address}, {o.order.city}, {o.order.state} {o.order.pincode}</div>
-                <div className="loc" style={{ marginTop: 6 }}>
+                <DeliveryDetails order={o.order} />
+                <div className="loc" style={{ marginTop: 10 }}>
                   {o.items.map(i => `${i.product_name} × ${i.quantity}`).join(', ')} · {rupees(o.gross)}
                 </div>
               </section>

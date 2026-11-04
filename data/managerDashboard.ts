@@ -128,6 +128,8 @@ export interface SalesOrder {
   order_number: string;
   source: OrderSource;
   caller_id: number | null;
+  /** Who took it on a call, on the seller's orders; null for website orders and once that account is deleted. */
+  caller_name?: string | null;
   customer_name: string;
   phone: string;
   address: string;

@@ -5,46 +5,20 @@
 
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart3, Bell, Boxes, HelpCircle, LayoutDashboard, MapPin, Menu, Settings, ShoppingCart, Truck, UserRound, Wallet, X } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { Bell, Menu, X } from 'lucide-react';
 import LogoutButton from '../../LogoutButton';
 import { AppLink, useNav, useSheetHistory } from '../app/nav';
-import type { ScreenKey } from '../app/routes';
+import { SellerMenuGroup, sellerMenuGroups } from '../app/menu';
 import { useSeller } from '../app/SellerProvider';
 
-interface MenuItem { screen: ScreenKey; label: string; href: string; icon: LucideIcon; count?: number }
-
-/** Every seller page, grouped like the desktop sidebar. */
-function useMenuGroups(): { label: string; items: MenuItem[] }[] {
+/** The desktop sidebar's pages, plus Notifications: phones have no bell in the top bar. */
+function useMenuGroups(): SellerMenuGroup[] {
   const { counts, stockAlerts, unreadCount } = useSeller();
-  return [
-    { label: 'Overview', items: [{ screen: 'home', label: 'Dashboard', href: '/seller', icon: LayoutDashboard }] },
-    {
-      label: 'Sell',
-      items: [
-        { screen: 'orders', label: 'Orders', href: '/seller/orders', icon: ShoppingCart, count: counts.toConfirm },
-        { screen: 'stock', label: 'Stock', href: '/seller/stock', icon: Boxes, count: stockAlerts },
-        { screen: 'tracking', label: 'Tracking', href: '/seller/tracking', icon: Truck, count: counts.lateShipments + counts.toShip },
-        { screen: 'regional', label: 'Regional report', href: '/seller/regional', icon: MapPin },
-      ],
-    },
-    {
-      label: 'Money',
-      items: [
-        { screen: 'payouts', label: 'Payouts', href: '/seller/payouts', icon: Wallet, count: counts.payoutsDue },
-        { screen: 'reports', label: 'Reports', href: '/seller/reports', icon: BarChart3 },
-      ],
-    },
-    {
-      label: 'Account',
-      items: [
-        { screen: 'notifications', label: 'Notifications', href: '/seller/notifications', icon: Bell, count: unreadCount },
-        { screen: 'profile', label: 'Seller profile', href: '/seller/profile', icon: UserRound },
-        { screen: 'settings', label: 'Settings', href: '/seller/settings', icon: Settings },
-        { screen: 'help', label: 'Help & support', href: '/seller/help', icon: HelpCircle },
-      ],
-    },
-  ];
+  const [overview, ...rest] = sellerMenuGroups({
+    toConfirm: counts.toConfirm, stockAlerts, shipments: counts.lateShipments + counts.toShip, payoutsDue: counts.payoutsDue,
+  });
+  const notifications = { screen: 'notifications', label: 'Notifications', href: '/seller/notifications', icon: Bell, count: unreadCount } as const;
+  return [{ ...overview, items: [...overview.items, notifications] }, ...rest];
 }
 
 /** The ☰ page menu: slides in from the left; Escape, the backdrop, the close button or the back button close it. */
