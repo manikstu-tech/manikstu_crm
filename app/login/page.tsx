@@ -34,7 +34,7 @@ export default function LoginPage() {
           <LoginForm demoAccounts={process.env.NODE_ENV !== 'production' ? DEMO_ACCOUNTS : []} />
         </div>
       </main>
-      <footer className="login-footer">© 2026 Manikstu Agri Network · Odisha</footer>
+      <footer className="login-footer">© 2026 Manikstu Agro Private Limited, Odisha</footer>
     </div>
   );
 }
