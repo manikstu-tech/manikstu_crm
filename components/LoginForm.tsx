@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowRight, Eye, EyeOff, Lock, User } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 
 export interface DemoAccount {
   label: string;
@@ -48,7 +48,7 @@ export default function LoginForm({ demoAccounts = [] }: { demoAccounts?: DemoAc
     <>
       <form onSubmit={handleSubmit} className="login-form">
         <div className="form-group">
-          <label htmlFor="login">Email or Staff ID</label>
+          <label htmlFor="login"><Mail size={16} className="login-label-icon" aria-hidden="true" />Email or Staff ID</label>
           <div className="login-input">
             <User size={18} className="login-input-icon" aria-hidden="true" />
             <input
@@ -65,7 +65,7 @@ export default function LoginForm({ demoAccounts = [] }: { demoAccounts?: DemoAc
           </div>
         </div>
         <div className="form-group">
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password"><Lock size={16} className="login-label-icon" aria-hidden="true" />Password</label>
           <div className="password-field login-input">
             <Lock size={18} className="login-input-icon" aria-hidden="true" />
             <input
