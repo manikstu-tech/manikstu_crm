@@ -997,6 +997,8 @@ html.sx-locked .sx-toast { top: calc(var(--sx-safe-top) + 10px); bottom: auto; }
   padding: 12px; border: 1px solid var(--sx-line); border-radius: var(--sx-r-lg);
 }
 .sx-desk-page .sx-page-intro { display: none; }
+.modal-container .sx.sx-desk-page { max-width: none; margin-bottom: 0; }
+.modal-container .sx-desk-page .sx-actionbar { bottom: -26px; margin: 4px -26px -48px; padding: 12px 26px; border-width: 1px 0 0; border-radius: 0; background: #fff; }
 
 /* ---------- Motion ---------- */
 

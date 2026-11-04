@@ -53,9 +53,11 @@ interface Props {
   onReject: (orderId: number) => void;
   /** Jump to the Tracking page for one order. */
   onTrack: (orderNumber: string) => void;
+  /** Open one order's details: customer, mobile, items and invoice. */
+  onView: (orderId: number) => void;
 }
 
-export default function SellerOrders({ orders, mixedOrderIds, searchQuery, onOpenConfirm, onReject, onTrack }: Props) {
+export default function SellerOrders({ orders, mixedOrderIds, searchQuery, onOpenConfirm, onReject, onTrack, onView }: Props) {
   // Confirmed section
   const [stage, setStage] = useState<string>('any');
   const [range, setRange] = useState<DateRange>('all');
@@ -158,6 +160,7 @@ export default function SellerOrders({ orders, mixedOrderIds, searchQuery, onOpe
                   <td>{s.order.payment_method}<div className="loc">{s.order.payment_status}</div></td>
                   <td>
                     <div className="row-actions">
+                      <button className="btn-secondary btn-small" onClick={() => onView(s.order.id)} aria-label={`View ${s.order.order_number}`}>View</button>
                       <button className="btn-primary btn-small" onClick={() => onOpenConfirm(s.order.id)}>Confirm</button>
                       <button
                         className="btn-secondary btn-small"

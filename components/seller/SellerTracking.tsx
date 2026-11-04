@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Printer } from 'lucide-react';
 import { TODAY } from '../../data/today';
+import { courierLocked } from '../../lib/couriers';
 import { daysBefore, rupees, shortDate } from '../../lib/format';
 import { orderSourceLabel } from '../../lib/orderDisplay';
 import Modal from '../Modal';
@@ -57,12 +58,13 @@ interface Props {
   shipmentDetails: Record<number, ShipmentDetails>;
   onAdvanceStage: (orderId: number, action: ManualStageAction) => void;
   onOpenConfirm: (orderId: number) => void;
+  onPrintInvoice: (order: SellerOrder) => void;
   /** An order to open straight away (from Track on the Orders page, or after Mark packed / shipped). */
   focusOrderNumber?: string | null;
   onFocusHandled?: () => void;
 }
 
-export default function SellerTracking({ orders, searchQuery, shipmentDetails, onAdvanceStage, onOpenConfirm, focusOrderNumber, onFocusHandled }: Props) {
+export default function SellerTracking({ orders, searchQuery, shipmentDetails, onAdvanceStage, onOpenConfirm, onPrintInvoice, focusOrderNumber, onFocusHandled }: Props) {
   const [tab, setTab] = useState<Tab>('all');
   const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState<number | null>(null);
@@ -211,9 +213,11 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
                     <span className="loc">Not added yet</span>
                   )}
                 </div>
-                <button className="link link-btn" onClick={() => onOpenConfirm(o.order.id)}>
-                  {shipmentDetails[o.order.id] ? 'Edit' : 'Add details'}
-                </button>
+                {!courierLocked(o.order.status, shipmentDetails[o.order.id]?.courier) && (
+                  <button className="link link-btn" onClick={() => onOpenConfirm(o.order.id)}>
+                    {shipmentDetails[o.order.id] ? 'Edit' : 'Add details'}
+                  </button>
+                )}
               </section>
 
               {(() => {
@@ -226,6 +230,12 @@ export default function SellerTracking({ orders, searchQuery, shipmentDetails, o
                   </section>
                 );
               })()}
+
+              {!['pending', 'rejected', 'cancelled'].includes(o.order.status) && (
+                <section className="od-section">
+                  <button className="btn-secondary btn-small" onClick={() => onPrintInvoice(o)}><Printer size={14} aria-hidden /> Print invoice</button>
+                </section>
+              )}
 
               <TrackingTimeline tracking={t} courierMissing={courierMissing(o)} />
               {t.delayed && (
