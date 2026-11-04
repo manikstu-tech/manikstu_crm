@@ -62,6 +62,7 @@ describe('Seller sidebar', () => {
 describe('Seller company name', () => {
   it('is Manikstu Agro Pvt Ltd, with the seller name unchanged', () => {
     assert.equal(SELLERS[0].business, 'Manikstu Agro Pvt Ltd');
+    assert.equal(SELLERS[0].gstin, '21AAJCM6881B1ZM');
     assert.equal(SELLERS[0].owner, 'Sanjay Rath');
   });
 });
