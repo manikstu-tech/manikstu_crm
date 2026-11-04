@@ -16,6 +16,10 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
 export default function LoginPage() {
   return (
     <div className="login-page">
+      {/* Desktop only: leaf sprigs in the top corners, hills and goats along the bottom */}
+      <div className="login-deco" aria-hidden="true">
+        <span className="d-tl" /><span className="d-tr" /><span className="d-bl" /><span className="d-br" />
+      </div>
       <main className="login-main">
         <header className="login-hero">
           <img className="login-logo" src="/brand/samarth-logo.webp" alt="Manikstu" />
