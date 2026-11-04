@@ -54,3 +54,9 @@ export function formatMobile(phone: Text): string {
   if (digits.length === 12 && digits.startsWith('91')) return `+91 ${digits.slice(2)}`;
   return stored;
 }
+
+/** The link that dials the customer, or '' when the number is missing or too short to call. */
+export function mobileTelHref(phone: Text): string {
+  const number = formatMobile(phone).replace(/[^\d+]/g, '');
+  return number.replace(/\D/g, '').length >= 10 ? `tel:${number}` : '';
+}

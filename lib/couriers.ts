@@ -35,6 +35,13 @@ export const BUS_NUMBER_MAX = 30;
 /** Bus parcels have no tracking number: the field is hidden and not asked for. Every other courier needs one. */
 export const needsTracking = (code: CourierCode | '') => code !== 'bus';
 
+/**
+ * The parcel has left with this courier, so its details can no longer change. Same rule as the backend
+ * (Order::courierLocked); an order shipped with no courier recorded can still have one added.
+ */
+export const courierLocked = (status: string, courier: string | null | undefined) =>
+  (status === 'shipped' || status === 'delivered') && !!courier?.trim();
+
 /** What is wrong with each field, or null. Shown under the field once the seller tries to save. */
 export function courierProblems(f: CourierForm): { courier: string | null; otherName: string | null; trackingNo: string | null } {
   const other = f.otherName.replace(/\s+/g, ' ').trim();

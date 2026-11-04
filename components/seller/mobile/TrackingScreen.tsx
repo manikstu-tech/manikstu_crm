@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Eye, MapPin, PackageCheck, Pencil, Truck, Warehouse } from 'lucide-react';
+import { courierLocked } from '../../../lib/couriers';
 import { daysBefore, rupees, shortDate, shortDateTime } from '../../../lib/format';
 import { formatDeliveryAddress, formatMobile } from '../../../lib/orderDisplay';
 import { STAGE_FLOW, STAGE_LABEL, Tracking, stageIndex } from '../../telecaller/orderTracking';
@@ -70,7 +71,7 @@ function TrackingDetails({ x, onClose, stage }: { x: { o: SellerOrder; t: Tracki
             ? <KeyVal k="Delivered" v={shortDateTime(lastAt(t, 'delivered') ?? '')} />
             : t.expected_at && <KeyVal k="Est. delivery" v={<span className={t.delayed ? 'sx-tone-danger' : undefined}>{shortDate(t.expected_at)}{t.delayed ? ' · late' : ''}</span>} />}
         </dl>
-        {o.order.status !== 'pending' && t.stage !== 'cancelled' && (
+        {o.order.status !== 'pending' && t.stage !== 'cancelled' && !courierLocked(o.order.status, details?.courier) && (
           <Btn variant="ghost" size="sm" icon={Pencil} onClick={() => openConfirmCard(o.order.id)}>{details?.courier ? 'Edit courier details' : 'Add courier details'}</Btn>
         )}
         {t.delayed && (

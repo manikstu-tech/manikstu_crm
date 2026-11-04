@@ -30,6 +30,10 @@ export default function SellerDashboard() {
   const { route, navigate, query, setQuery } = useNav();
   const { user, seller, myOrders, myProducts, mixedOrderIds, shipmentDetails, movements, notifications, counts, stockAlerts, toast } = s;
   const activePage = DESKTOP_PAGE[route.screen];
+  // The order open in the View window on the Orders page. Going to another page (Track, say) closes it.
+  const [viewOrderId, setViewOrderId] = React.useState<number | null>(null);
+  React.useEffect(() => setViewOrderId(null), [route.screen]);
+  const viewOrder = viewOrderId === null ? undefined : myOrders.find(o => o.order.id === viewOrderId);
   const go = (page: string) => navigate(DESKTOP_HREF[page] ?? '/seller');
 
   const detailOrder = route.screen === 'order' ? myOrders.find(o => o.order.id === route.id) : null;
@@ -109,6 +113,7 @@ export default function SellerDashboard() {
               onOpenConfirm={s.openConfirmCard}
               onReject={id => void s.rejectOrder(id)}
               onTrack={s.trackOrder}
+              onView={setViewOrderId}
             />
           )}
           {route.screen === 'stock' && (
@@ -123,6 +128,7 @@ export default function SellerDashboard() {
               focusOrderNumber={query.get('order')}
               onFocusHandled={() => setQuery({ order: null })}
               onOpenConfirm={s.openConfirmCard}
+              onPrintInvoice={s.printInvoice}
             />
           )}
           {route.screen === 'regional' && <SellerRegional seller={seller} orders={myOrders} onToast={msg => s.showToast(msg)} />}
@@ -151,6 +157,10 @@ export default function SellerDashboard() {
         onClearAll={s.clearNotifications}
         title="Seller alerts"
       />
+
+      <Modal isOpen={viewOrderId !== null} onClose={() => setViewOrderId(null)} title={viewOrder ? `Order ${viewOrder.order.order_number}` : 'Order details'} wide>
+        {viewOrderId !== null && <div className="sx sx-desk-page"><OrderDetailScreen id={viewOrderId} embedded /></div>}
+      </Modal>
 
       <Modal
         isOpen={confirmOrder !== null && c !== null}

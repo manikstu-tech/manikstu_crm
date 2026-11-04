@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { ExternalLink, FileQuestion, MapPin, Pencil, Phone, Truck, UserRound, Wallet } from 'lucide-react';
+import { Copy, ExternalLink, FileQuestion, MapPin, Pencil, Phone, Printer, Truck, UserRound, Wallet } from 'lucide-react';
 import { rupees, shortDateTime } from '../../../lib/format';
-import { orderSourceLabel } from '../../../lib/orderDisplay';
+import { formatDeliveryAddress, formatMobile, mobileTelHref, orderSourceLabel } from '../../../lib/orderDisplay';
+import { courierLocked } from '../../../lib/couriers';
 import { STAGE_LABEL } from '../../telecaller/orderTracking';
 import { AppLink } from '../app/nav';
 import { useSeller } from '../app/SellerProvider';
@@ -17,13 +18,9 @@ const CALL_LABEL: Record<string, string> = {
   connected: 'Call connected', no_answer: 'No answer', busy: 'Line busy', switched_off: 'Phone switched off', wrong_number: 'Wrong number', callback_requested: 'Callback requested',
 };
 
-const telHref = (phone: string) => {
-  const digits = phone.replace(/\D/g, '');
-  return digits.length === 10 ? `tel:+91${digits}` : `tel:${digits}`;
-};
-
-export default function OrderDetailScreen({ id }: { id: number }) {
-  const { myOrders, myProducts, seller, shipmentDetails, nextManualStep, openConfirmCard, busyOrderIds, trackOrder, mixedOrderIds } = useSeller();
+/** `embedded`: inside the View window on the Orders page, whose title already carries the order number. */
+export default function OrderDetailScreen({ id, embedded = false }: { id: number; embedded?: boolean }) {
+  const { myOrders, myProducts, seller, shipmentDetails, nextManualStep, openConfirmCard, busyOrderIds, trackOrder, mixedOrderIds, showToast, printInvoice } = useSeller();
   const s = myOrders.find(x => x.order.id === id);
   const reject = useRejectRunner();
   const stage = useStageRunner();
@@ -43,6 +40,8 @@ export default function OrderDetailScreen({ id }: { id: number }) {
   const step = nextManualStep(o, details);
   const closed = o.status === 'rejected' || o.status === 'cancelled';
   const confirmedOrLater = !closed && o.status !== 'pending';
+  // Not accepted yet, so there is no delivery to follow: the seller only needs who it is for and what was ordered.
+  const isNew = o.status === 'pending';
 
   // History: delivery steps plus the telecalling team's calls, newest first.
   const history = [
@@ -50,20 +49,32 @@ export default function OrderDetailScreen({ id }: { id: number }) {
     ...(o.calls ?? []).map(c => ({ key: `c-${c.id}`, at: c.at, title: `${CALL_LABEL[c.call_status] ?? 'Call'}${c.remarks ? `: ${c.remarks}` : ''}`, sub: c.by ? `Telecalling · ${c.by}` : 'Telecalling team' })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
-  const address = [o.address, o.city, o.state, o.pincode].filter(Boolean).join(', ');
+  const address = formatDeliveryAddress(o);
+  const mobile = formatMobile(o.phone);
+  const callHref = mobileTelHref(o.phone);
   const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
   const payTone = o.payment_status === 'paid' ? 'success' : o.payment_status === 'refunded' ? 'muted' : 'warn';
 
+  // A laptop usually has nothing to dial with, so the number can also be copied to a phone.
+  const copyMobile = async () => {
+    try {
+      await navigator.clipboard.writeText(mobile);
+      showToast('Mobile number copied');
+    } catch {
+      showToast(`Could not copy. The number is ${mobile}`, 'warning');
+    }
+  };
+
   return (
     <div className="sx-stack sx-detail">
-      <Card className="sx-detail-head">
+      {!(isNew && embedded) && <Card className="sx-detail-head">
         <div className="sx-detail-top">
           <span className="sx-detail-num">{o.order_number}</span>
           <Chip tone={ORDER_TONE[o.status]}>{o.status === 'pending' ? 'New' : o.stage_label ?? ORDER_STATUS_LABEL[o.status]}</Chip>
         </div>
         <p className="sx-detail-meta">{shortDateTime(o.created_at)} · {orderSourceLabel(o)}</p>
-        {!closed && <TrackSteps t={tracking} />}
-        {!closed && tracking.expected_at && (
+        {confirmedOrLater && <TrackSteps t={tracking} />}
+        {confirmedOrLater && tracking.expected_at && (
           <p className={`sx-detail-eta ${tracking.delayed ? 'sx-tone-danger' : ''}`}>
             {tracking.delayed ? 'Late · ' : ''}Est. delivery {shortDateTime(tracking.expected_at).split(',')[0]}
           </p>
@@ -71,15 +82,21 @@ export default function OrderDetailScreen({ id }: { id: number }) {
         {o.communication_status && (o.stage === 'seller_confirmed' || o.stage === 'telecalling') && (
           <p className="sx-detail-meta">{COMM_LABEL[o.communication_status]}{o.handled_by_name ? ` · ${o.handled_by_name}` : ''}</p>
         )}
-      </Card>
+        {confirmedOrLater && <Btn variant="secondary" icon={Printer} block onClick={() => printInvoice(s)}>Print invoice</Btn>}
+      </Card>}
 
       <Card aria-labelledby="sx-d-cust">
         <SectionHead id="sx-d-cust" title="Customer" />
         <div className="sx-contact">
           <UserRound size={20} aria-hidden />
-          <div><strong>{o.customer_name}</strong>{o.phone && <span>{o.phone}</span>}</div>
-          {o.phone && <a href={telHref(o.phone)} className="sx-icon-btn sx-call" aria-label={`Call ${o.customer_name}`}><Phone size={19} aria-hidden /></a>}
+          <div><strong>{o.customer_name}</strong><span>{mobile || 'Mobile number not available'}</span></div>
         </div>
+        {mobile && (
+          <div className="sx-actions">
+            <Btn variant="secondary" icon={Copy} onClick={() => void copyMobile()} aria-label="Copy mobile number">Copy</Btn>
+            {callHref && <a href={callHref} className="sx-btn sx-btn-primary sx-btn-md" aria-label={`Call ${o.customer_name}`}><Phone size={17} aria-hidden /><span>Call customer</span></a>}
+          </div>
+        )}
         <div className="sx-contact">
           <MapPin size={20} aria-hidden />
           <div><strong>Delivery address</strong><span>{address || 'No address on this order'}</span></div>
@@ -113,10 +130,10 @@ export default function OrderDetailScreen({ id }: { id: number }) {
           <KeyVal k="Method" v={o.payment_method === 'COD' ? 'Cash on delivery' : o.payment_method} />
           <KeyVal k="Status" v={<Chip tone={payTone}>{o.payment_status === 'paid' ? 'Paid' : o.payment_status === 'refunded' ? 'Refunded' : 'Unpaid'}</Chip>} />
           <KeyVal k="Items total" v={rupees(s.gross)} />
-          <KeyVal k={`Manikstu commission (${seller.commissionPct}%)`} v={`− ${rupees(s.commission)}`} />
-          <KeyVal k="You get" v={rupees(s.net)} strong />
+          {!isNew && <KeyVal k={`Manikstu commission (${seller.commissionPct}%)`} v={`− ${rupees(s.commission)}`} />}
+          {!isNew && <KeyVal k="You get" v={rupees(s.net)} strong />}
         </dl>
-        {s.payout !== 'None' && (
+        {!isNew && s.payout !== 'None' && (
           <AppLink href="/seller/payouts" className="sx-inline-link"><Wallet size={16} aria-hidden /> Payout: {s.payout === 'Paid out' ? 'past payout date (estimated)' : s.payout.toLowerCase()}</AppLink>
         )}
       </Card>
@@ -124,26 +141,26 @@ export default function OrderDetailScreen({ id }: { id: number }) {
       {confirmedOrLater && (
         <Card aria-labelledby="sx-d-courier">
           <SectionHead id="sx-d-courier" title="Courier & tracking"
-            action={<Btn size="sm" variant="ghost" icon={Pencil} onClick={() => openConfirmCard(o.id)}>{details?.courier ? 'Edit' : 'Add'}</Btn>} />
+            action={!courierLocked(o.status, details?.courier) && <Btn size="sm" variant="ghost" icon={Pencil} onClick={() => openConfirmCard(o.id)}>{details?.courier ? 'Edit' : 'Add'}</Btn>} />
           {details?.courier ? (
             <dl className="sx-kvs">
               <KeyVal k="Courier" v={details.courier} />
-              <KeyVal k="Tracking / AWB" v={<span className="sx-mono">{details.trackingNo}</span>} />
+              {details.trackingNo && <KeyVal k="Tracking / AWB" v={<span className="sx-mono">{details.trackingNo}</span>} />}
             </dl>
           ) : (
-            <Notice tone="info" icon={Truck}>No courier details on this device. They are kept only until the app is closed, because the CRM doesn&apos;t store them yet.</Notice>
+            <Notice tone="info" icon={Truck}>No courier details added yet.</Notice>
           )}
         </Card>
       )}
 
-      {o.notes && (
+      {!isNew && o.notes && (
         <Card aria-labelledby="sx-d-notes">
           <SectionHead id="sx-d-notes" title="Notes" />
           <p className="sx-body">{o.notes}</p>
         </Card>
       )}
 
-      <Card aria-labelledby="sx-d-hist">
+      {!isNew && <Card aria-labelledby="sx-d-hist">
         <SectionHead id="sx-d-hist" title="Order history" meta={STAGE_LABEL[tracking.stage]} />
         <ol className="sx-timeline">
           {history.map(h => (
@@ -153,7 +170,7 @@ export default function OrderDetailScreen({ id }: { id: number }) {
             </li>
           ))}
         </ol>
-      </Card>
+      </Card>}
 
       {(o.status === 'pending' || confirmedOrLater) && (
         <div className="sx-actionbar">

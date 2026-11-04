@@ -11,6 +11,7 @@ import type { Seller } from '../../../data/sellers';
 import { LOW_STOCK_LEVEL } from '../../../data/stockLevels';
 import type { SessionUser } from '../../../lib/session';
 import { nowStamp, rupees } from '../../../lib/format';
+import { printSellerInvoice } from '../../../lib/sellerInvoice';
 import { isLiveOrder } from '../../telecaller/orderTracking';
 import { CourierCode, CourierForm, courierCodeFor, courierPayload, courierProblems } from '../../../lib/couriers';
 import {
@@ -339,7 +340,8 @@ function useSellerState({ user, seller, initialOrders, initialProducts, mixedOrd
     const at = nowStamp();
     const order = orders.find(o => o.id === orderId);
     const previousStatus = order?.status;
-    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, status: to, status_history: [...o.status_history, { status: to, at }] } : o)));
+    // The backend's label describes the old status, so drop it until the next refresh brings the new one.
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, status: to, stage_label: undefined, status_history: [...o.status_history, { status: to, at }] } : o)));
     const goTrack = opts.navigate ?? !isMobile;
     if (order) {
       showToast(`${order.order_number} marked ${ORDER_STATUS_LABEL[to].toLowerCase()}`, 'success',
@@ -429,6 +431,11 @@ function useSellerState({ user, seller, initialOrders, initialProducts, mixedOrd
   /* ---------- Confirm order: courier + tracking number ---------- */
   const [confirmCard, setConfirmCard] = useState<ConfirmCard | null>(null);
   const confirmOrder = confirmCard ? orders.find(o => o.id === confirmCard.orderId) ?? null : null;
+
+  const printInvoice = useCallback((s: SellerOrder) => {
+    const opened = printSellerInvoice({ order: s.order, items: s.items, seller, partial: mixedOrderIds.includes(s.order.id) });
+    if (!opened) showToast('Your browser blocked the invoice. Allow pop-ups for this site and try again.', 'warning');
+  }, [seller, mixedOrderIds, showToast]);
 
   const openConfirmCard = useCallback((orderId: number) => {
     // Opens with what is saved: the order's own courier, or (older data) a name typed before the list existed.
@@ -675,7 +682,7 @@ function useSellerState({ user, seller, initialOrders, initialProducts, mixedOrd
     lastSync, syncing, syncError, refresh,
     toast, showToast, dismissToast,
     notifications, unreadCount, seenNotifs, dismissNotification, clearNotifications, markNotificationsSeen, notifsOpen, setNotifsOpen,
-    busyOrderIds, advanceOrder, rejectOrder, advanceManualStage, trackOrder, nextManualStep,
+    busyOrderIds, advanceOrder, rejectOrder, advanceManualStage, trackOrder, nextManualStep, printInvoice,
     confirmCard, confirmOrder, openConfirmCard, closeConfirmCard, setConfirmField, saveConfirmCard,
     restock, openRestock, closeRestock, setRestockField, saveRestock,
     productForm, openAddProduct, openEditProduct, closeProductForm, setProductField, setProductSpec, pickProductImage, removeProductImage, saveProduct,
