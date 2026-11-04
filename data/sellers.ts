@@ -28,7 +28,7 @@ export const SELLERS: Seller[] = [
     business: 'Manikstu Agro Pvt Ltd',
     owner: 'Sanjay Rath',
     city: 'Bhubaneswar',
-    gstin: '21AAKFO4412M1Z6',
+    gstin: '21AAJCM6881B1ZM',
     commissionPct: 12,
     payoutAfterDays: 7,
     // Central inventory: this single seller owns the whole catalogue.

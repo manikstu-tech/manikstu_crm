@@ -10,13 +10,13 @@ const order = {
   address: 'At Khaliapadi', city: 'Khalipada', state: 'Odisha', pincode: '767062', payment_method: 'COD' as PaymentMethod, payment_status: 'unpaid' as PaymentStatus,
 };
 const items = [{ product_name: 'Livtherapy Syrup', quantity: 2, price: 173 }, { product_name: 'Poshak Tatwa', quantity: 1, price: 99.5 }];
-const seller = { business: 'Manikstu Agro Pvt Ltd', city: 'Bhubaneswar', gstin: '21AAKFO4412M1Z6' };
+const seller = { business: 'Manikstu Agro Pvt Ltd', city: 'Bhubaneswar', gstin: '21AAJCM6881B1ZM' };
 
 describe('sellerInvoiceHtml', () => {
   const html = sellerInvoiceHtml({ order, items, seller });
 
   it('shows the seller, the order and who it is billed to', () => {
-    for (const text of ['Manikstu Agro Pvt Ltd', 'GSTIN 21AAKFO4412M1Z6', 'TEL-6E1527DEA9457E8C', 'Sachidananda Padhan', '767062', '+91 9692337616', 'Cash on delivery', 'Unpaid']) {
+    for (const text of ['Manikstu Agro Pvt Ltd', 'GSTIN 21AAJCM6881B1ZM', 'TEL-6E1527DEA9457E8C', 'Sachidananda Padhan', '767062', '+91 9692337616', 'Cash on delivery', 'Unpaid']) {
       assert.ok(html.includes(text), text);
     }
   });
