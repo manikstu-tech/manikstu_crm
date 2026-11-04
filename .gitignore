@@ -1,6 +1,7 @@
 node_modules/
 .next/
 out/
+.test-build/
 .env*
 *.log
 .DS_Store

@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, FileQuestion, MapPin, Pencil, Phone, Truck, UserRound, Wallet } from 'lucide-react';
 import { rupees, shortDateTime } from '../../../lib/format';
+import { orderSourceLabel } from '../../../lib/orderDisplay';
 import { STAGE_LABEL } from '../../telecaller/orderTracking';
 import { AppLink } from '../app/nav';
 import { useSeller } from '../app/SellerProvider';
@@ -60,7 +61,7 @@ export default function OrderDetailScreen({ id }: { id: number }) {
           <span className="sx-detail-num">{o.order_number}</span>
           <Chip tone={ORDER_TONE[o.status]}>{o.status === 'pending' ? 'New' : o.stage_label ?? ORDER_STATUS_LABEL[o.status]}</Chip>
         </div>
-        <p className="sx-detail-meta">{shortDateTime(o.created_at)} · {o.source === 'website' ? 'Website order' : 'Telecalling order'}</p>
+        <p className="sx-detail-meta">{shortDateTime(o.created_at)} · {orderSourceLabel(o)}</p>
         {!closed && <TrackSteps t={tracking} />}
         {!closed && tracking.expected_at && (
           <p className={`sx-detail-eta ${tracking.delayed ? 'sx-tone-danger' : ''}`}>

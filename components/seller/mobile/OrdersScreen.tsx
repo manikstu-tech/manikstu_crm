@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Inbox, Phone, SlidersHorizontal, Truck, UserRound } from 'lucide-react';
 import type { CommunicationStatus, OrderStatus } from '../../../data/managerDashboard';
 import { daysBefore, rupees, shortDateTime } from '../../../lib/format';
+import { orderSourceLabel } from '../../../lib/orderDisplay';
 import { AppLink, useNav } from '../app/nav';
 import { useSeller } from '../app/SellerProvider';
 import { ORDER_STATUS_LABEL, SellerOrder } from '../sellerData';
@@ -41,7 +42,7 @@ export function OrderCard({ s, mixed, onReject, stage }: { s: SellerOrder; mixed
         <AppLink href={`/seller/orders/${o.id}`} className="sx-order-num sx-stretch" id={`sx-o-${o.id}`}>{o.order_number}</AppLink>
         <Chip tone={ORDER_TONE[o.status]}>{shownStatus}</Chip>
       </div>
-      <div className="sx-order-meta">{shortDateTime(o.created_at)} · {o.source === 'website' ? 'Website' : 'Telecaller'}</div>
+      <div className="sx-order-meta">{shortDateTime(o.created_at)} · {orderSourceLabel(o)}</div>
       <div className="sx-order-cust">
         <UserRound size={17} aria-hidden />
         <span><strong>{o.customer_name}</strong><span>{o.city}{o.pincode ? `, ${o.pincode}` : ''}</span></span>

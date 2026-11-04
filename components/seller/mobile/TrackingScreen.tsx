@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Eye, MapPin, PackageCheck, Pencil, Truck, Warehouse } from 'lucide-react';
 import { daysBefore, rupees, shortDate, shortDateTime } from '../../../lib/format';
+import { formatDeliveryAddress, formatMobile } from '../../../lib/orderDisplay';
 import { STAGE_FLOW, STAGE_LABEL, Tracking, stageIndex } from '../../telecaller/orderTracking';
 import { AppLink, useNav } from '../app/nav';
 import { useSeller } from '../app/SellerProvider';
@@ -57,7 +58,7 @@ function TrackingDetails({ x, onClose, stage }: { x: { o: SellerOrder; t: Tracki
       <div className="sx-stack">
         <div className="sx-contact">
           <MapPin size={20} aria-hidden />
-          <div><strong>{o.order.customer_name}</strong><span>{[o.order.address, o.order.city, o.order.state, o.order.pincode].filter(Boolean).join(', ')}</span></div>
+          <div><strong>{o.order.customer_name}</strong><span>{formatDeliveryAddress(o.order) || 'Address not available'}</span><span>{formatMobile(o.order.phone) || 'Mobile number not available'}</span></div>
         </div>
         <p className="sx-hint">{o.items.map(i => `${i.product_name} × ${i.quantity}`).join(', ')} · {rupees(o.gross)}</p>
         {t.stage !== 'cancelled' && <TrackSteps t={t} />}
@@ -115,7 +116,7 @@ export default function TrackingScreen() {
 
   const needle = q.trim().toLowerCase();
   const matches = (x: typeof tracked[number]) =>
-    !needle || [x.o.order.order_number, x.o.order.customer_name, x.o.order.city, x.t.awb ?? '', x.t.courier ?? ''].some(v => v.toLowerCase().includes(needle));
+    !needle || [x.o.order.order_number, x.o.order.customer_name, x.o.order.city, x.t.awb ?? '', x.t.courier ?? ''].some(v => (v ?? '').toLowerCase().includes(needle));
   const count = (k: TrackTab) => tracked.filter(x => inTrackTab(x.o, x.t, k) && matches(x)).length;
   const rows = tracked
     .filter(x => inTrackTab(x.o, x.t, tab))

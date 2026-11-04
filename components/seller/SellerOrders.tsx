@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { CheckCircle2, Clock, PhoneCall, Wallet } from 'lucide-react';
 import type { CommunicationStatus, OrderStatus } from '../../data/managerDashboard';
 import { ORDER_CHIP, nowStamp, rupees, rupeesShort, shortDateTime } from '../../lib/format';
+import { orderSourceLabel } from '../../lib/orderDisplay';
 import { isLiveOrder, realNowStamp } from '../telecaller/orderTracking';
 import { ORDER_STATUS_LABEL, SellerOrder } from './sellerData';
 
@@ -149,9 +150,9 @@ export default function SellerOrders({ orders, mixedOrderIds, searchQuery, onOpe
               )}
               {newShown.map(s => (
                 <tr key={s.order.id}>
-                  <td className="cust">{s.order.order_number}<div className="loc">{s.order.source === 'website' ? 'Website' : 'Telecaller'}</div></td>
+                  <td className="cust">{s.order.order_number}<div className="loc">{orderSourceLabel(s.order)}</div></td>
                   <td>{shortDateTime(s.order.created_at)}</td>
-                  <td>{s.order.customer_name}<div className="loc">{s.order.city}, {s.order.pincode}</div></td>
+                  <td>{s.order.customer_name}<div className="loc">{[s.order.city, s.order.pincode].filter(Boolean).join(', ')}</div></td>
                   {itemsCell(s)}
                   <td className="num-col strong">{rupees(s.gross)}</td>
                   <td>{s.order.payment_method}<div className="loc">{s.order.payment_status}</div></td>
@@ -227,8 +228,8 @@ export default function SellerOrders({ orders, mixedOrderIds, searchQuery, onOpe
                 const done = confirmedEntry(s);
                 return (
                   <tr key={o.id}>
-                    <td className="cust">{o.order_number}<div className="loc">Placed {shortDateTime(o.created_at)}</div></td>
-                    <td>{o.customer_name}<div className="loc">{o.phone} · {o.city}</div></td>
+                    <td className="cust">{o.order_number}<div className="loc">{orderSourceLabel(o)}</div><div className="loc">Placed {shortDateTime(o.created_at)}</div></td>
+                    <td>{o.customer_name}<div className="loc">{[o.phone, o.city].filter(Boolean).join(' · ')}</div></td>
                     {itemsCell(s)}
                     <td className="num-col strong">{rupees(s.gross)}</td>
                     <td>
