@@ -24,6 +24,7 @@ import { sellerMenuGroups } from './seller/app/menu';
 import { DESKTOP_HREF, DESKTOP_PAGE } from './seller/app/routes';
 import { useSeller } from './seller/app/SellerProvider';
 import { BUS_NAME_MAX, BUS_NUMBER_MAX, COURIERS, courierProblems, needsTracking } from '../lib/couriers';
+import SiteFooter from './SiteFooter';
 
 export default function SellerDashboard() {
   const s = useSeller();
@@ -144,9 +145,7 @@ export default function SellerDashboard() {
               {route.screen === 'help' && <HelpScreen />}
             </div>
           )}
-          <footer className="site-footer">
-            <div>© 2026 Manikstu Agri Network · Seller Hub</div>
-          </footer>
+          <SiteFooter />
         </main>
       </div>
 

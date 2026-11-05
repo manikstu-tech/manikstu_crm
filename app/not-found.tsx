@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { COPYRIGHT } from '../components/SiteFooter';
 
 export default function NotFound() {
   return (
@@ -8,6 +9,7 @@ export default function NotFound() {
       <Link href="/login" style={{ color: '#0066cc', textDecoration: 'underline' }}>
         Return to Login
       </Link>
+      <p style={{ marginTop: '3rem', fontSize: '12.5px', color: '#5D6A63' }}>{COPYRIGHT}</p>
     </div>
   );
 }

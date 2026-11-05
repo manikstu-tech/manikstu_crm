@@ -47,6 +47,7 @@ import type { TrackerState } from '../lib/trackerOps';
 import { useSharedEnquiries, useTracker } from '../lib/useTracker';
 import SyncBadge from './SyncBadge';
 import type { SessionUser } from '../lib/session';
+import SiteFooter from './SiteFooter';
 
 const ORDER_CITIES = ['Bhubaneswar', 'Cuttack', 'Berhampur', 'Sambalpur', 'Balasore', 'Koraput', 'Rayagada', 'Bolangir', 'Keonjhar', 'Angul'];
 
@@ -490,9 +491,7 @@ export default function ManagerDashboard({
           )}
 
           {/* Footer + village frieze sit in the content column, so the sidebar stays pinned to the end */}
-          <footer className="site-footer">
-            <div>© 2026 Manikstu Agri Network · Territory Operations Manager</div>
-          </footer>
+          <SiteFooter />
         </main>
       </div>
 
