@@ -33,7 +33,7 @@ export default async function ChangePasswordPage() {
         </div>
       </main>
       <footer className="site-footer">
-        <div>© 2026 Manikstu Agro Private Limited, Odisha</div>
+        <div>© 2026 Manikstu Agro Private Limited</div>
       </footer>
     </div>
   );

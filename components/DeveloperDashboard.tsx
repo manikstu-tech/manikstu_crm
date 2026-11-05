@@ -25,6 +25,7 @@ import {
   Users,
 } from 'lucide-react';
 import CardTable from './CardTable';
+import SiteFooter from './SiteFooter';
 
 /** Every role portal the super admin can open. */
 interface Portal {
@@ -411,10 +412,7 @@ export default function DeveloperDashboard({ user, backend = false }: { user: Se
               </SectionCard>
             </>
           )}
-
-          <footer className="site-footer">
-            <div>© 2026 Manikstu Agri Network · Super Admin Console</div>
-          </footer>
+          <SiteFooter />
         </main>
       </div>
 

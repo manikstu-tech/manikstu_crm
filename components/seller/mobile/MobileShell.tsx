@@ -21,6 +21,7 @@ import RegionalScreen from './RegionalScreen';
 import PayoutsScreen from './PayoutsScreen';
 import ReportsScreen from './ReportsScreen';
 import { HelpScreen, MoreScreen, NotificationsScreen, ProfileScreen, SettingsScreen } from './AccountScreens';
+import SiteFooter from '../../SiteFooter';
 
 const TABS: { key: 'home' | 'orders' | 'stock' | 'tracking' | 'more'; label: string; href: string; icon: LucideIcon }[] = [
   { key: 'home', label: 'Home', href: '/seller', icon: Home },
@@ -142,6 +143,7 @@ export default function MobileShell() {
 
       <main id="sx-main" className="sx-main" tabIndex={-1}>
         <ScreenView />
+        <SiteFooter className="sx-footer" />
       </main>
 
       {!hideNav && (

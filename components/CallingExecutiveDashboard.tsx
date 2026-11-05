@@ -26,6 +26,7 @@ import SyncBadge from './SyncBadge';
 import { TeamData, stageOf } from './telecaller/tcData';
 import { QueueItem, buildQueue, callerFor } from './calling-executive/queue';
 import type { SessionUser } from '../lib/session';
+import SiteFooter from './SiteFooter';
 
 const tomorrow = () => {
   const d = new Date(`${TODAY}T00:00:00`);
@@ -283,6 +284,7 @@ export default function CallingExecutiveDashboard({ user, tracker }: { user: Ses
               onToast={showToast}
             />
           )}
+          <SiteFooter />
         </main>
       </div>
 

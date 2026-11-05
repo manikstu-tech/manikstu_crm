@@ -46,6 +46,7 @@ import SyncBadge from './SyncBadge';
 import type { ImportOutcome, NewLead } from './telecaller/ImportLeads';
 import { TeamData, isOverdue, staffStats, stuckLeadCount, teamAlerts } from './telecaller/tcData';
 import type { SessionUser } from '../lib/session';
+import SiteFooter from './SiteFooter';
 
 /**
  * Head telecalling dashboard: the telecalling head's view of the whole telecalling team.
@@ -408,6 +409,7 @@ export default function TelecallerDashboard({ user, tracker }: { user: SessionUs
           {activePage === 'complaints' && (
             <TeamComplaints complaints={complaints} onComplaintsChange={setComplaints} createComplaint={complaintsSync.create} headName={user.name} searchQuery={searchQuery} onToast={showToast} />
           )}
+          <SiteFooter />
         </main>
       </div>
 
